@@ -40,23 +40,25 @@ export async function getEventProduct(
 }
 
 export async function getPopularEventProducts(): Promise<EventProduct[]> {
-  if (USE_MOCK) {
+  // if (USE_MOCK) {
+  if (true) {
     const list = [...mockEventProducts]
       .sort((a, b) => b.soldCount - a.soldCount)
       .slice(0, 4)
       .map(withCategory)
     return mockDelay(list)
   }
-  return apiFetch<EventProduct[]>('/api/event-products/popular')
+  // return apiFetch<EventProduct[]>('/api/event-products/popular')
 }
 
 // 카테고리별 쇼케이스: 판매중/판매 예정 상품에 카테고리를 채워 반환
 export async function getShowcaseProducts(): Promise<EventProduct[]> {
-  if (USE_MOCK) {
+  // if (USE_MOCK) {
+  if (true) {
     const list = mockEventProducts
       .filter((ep) => ep.status !== 'STOPPED')
       .map(withCategory)
     return mockDelay(list)
   }
-  return apiFetch<EventProduct[]>('/api/event-products/showcase')
+  // return apiFetch<EventProduct[]>('/api/event-products/showcase')
 }
