@@ -26,8 +26,8 @@ export function useAuth() {
     }
   }, [])
 
-  const logout = useCallback(() => {
-    logoutService()
+  const logout = useCallback(async () => {
+    await logoutService()
     window.dispatchEvent(new Event(AUTH_EVENT))
   }, [])
 
