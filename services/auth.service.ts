@@ -3,66 +3,134 @@ import { apiFetch, mockDelay, USE_MOCK } from './api-client'
 import { mockUser } from './mock-data'
 
 const TOKEN_KEY = 'temon_token'
+const REFRESH_TOKEN_KEY = 'temon_refresh_token'
 const USER_KEY = 'temon_user'
 
-/**
- * 카카오 로그인 시작. 실제 환경에서는 백엔드가 내려주는
- * 카카오 인가 URL 로 리다이렉트합니다.
- */
-export function getKakaoAuthorizeUrl(): string {
-  if (USE_MOCK) return '/auth/callback?mock=1'
-  return `${process.env.NEXT_PUBLIC_API_BASE_URL}/oauth2/authorization/kakao`
+const KAKAO_CLIENT_ID = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID
+const KAKAO_REDIRECT_URI =
+  process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI ||
+  'http://localhost:3000/auth/callback'
+
+interface TokenResponse {
+  accessToken: string
+  refreshToken: string
 }
 
-/**
- * 카카오 콜백 처리 → 토큰 교환.
- */
+interface UserResponse {
+  id: number
+  email: string
+  nickname: string
+  role: string
+  status: string
+}
+
+function mapUserResponse(res: UserResponse): User {
+  return {
+    id: String(res.id),
+    nickname: res.nickname,
+    email: res.email ?? '',
+    profileImage: '',
+    phone: '',
+    point: 0,
+    createdAt: '',
+  }
+}
+
+export function getKakaoAuthorizeUrl(): string {
+  if (USE_MOCK) return '/auth/callback?mock=1'
+
+  return (
+    'https://kauth.kakao.com/oauth/authorize' +
+    `?client_id=${KAKAO_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}` +
+    '&response_type=code'
+  )
+}
+
 export async function loginWithKakao(code?: string): Promise<User> {
   if (USE_MOCK) {
     const user = await mockDelay(mockUser)
-    persistSession('mock-token', user)
+    persistSession('mock-token', undefined, user)
     return user
   }
-  const res = await apiFetch<{ token: string; user: User }>(
-    '/api/auth/kakao',
-    { method: 'POST', body: { code } },
+
+  const tokenRes = await apiFetch<TokenResponse>(
+    `/api/auth/oauth/kakao?code=${code}`,
+    {
+      method: 'GET',
+    },
   )
-  persistSession(res.token, res.user)
-  return res.user
+
+  persistSession(tokenRes.accessToken, tokenRes.refreshToken)
+
+  const user = await fetchMe()
+
+  if (!user) {
+    throw new Error('사용자 정보를 가져오지 못했습니다.')
+  }
+
+  persistSession(tokenRes.accessToken, tokenRes.refreshToken, user)
+
+  return user
 }
 
 export async function fetchMe(): Promise<User | null> {
   if (USE_MOCK) return getStoredUser()
-  return apiFetch<User>('/api/users/me')
+
+  const res = await apiFetch<UserResponse>('/api/users/me')
+  return mapUserResponse(res)
 }
 
 export async function updateProfile(patch: Partial<User>): Promise<User> {
   if (USE_MOCK) {
     const current = getStoredUser() ?? mockUser
     const updated = { ...current, ...patch }
-    persistSession(getToken() ?? 'mock-token', updated)
+    persistSession(getToken() ?? 'mock-token', getRefreshToken() ?? undefined, updated)
     return mockDelay(updated, 300)
   }
-  return apiFetch<User>('/api/users/me', { method: 'PATCH', body: patch })
+
+  const res = await apiFetch<UserResponse>(
+    `/api/users/me?nickname=${encodeURIComponent(patch.nickname ?? '')}`,
+    {
+      method: 'PATCH',
+    },
+  )
+
+  const user = mapUserResponse(res)
+  persistSession(getToken() ?? '', getRefreshToken() ?? undefined, user)
+
+  return user
 }
 
 export function logout() {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(TOKEN_KEY)
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY)
   window.localStorage.removeItem(USER_KEY)
 }
 
-// -------- 세션 헬퍼 --------
-
-export function persistSession(token: string, user: User) {
+export function persistSession(token: string, refreshToken?: string, user?: User) {
   if (typeof window === 'undefined') return
+
   window.localStorage.setItem(TOKEN_KEY, token)
-  window.localStorage.setItem(USER_KEY, JSON.stringify(user))
+
+  if (refreshToken) {
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  }
+
+  if (user) {
+    window.localStorage.setItem(USER_KEY, JSON.stringify(user))
+  }
 }
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null
   return window.localStorage.getItem(TOKEN_KEY)
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
 export function getStoredUser(): User | null {
