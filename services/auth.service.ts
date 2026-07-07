@@ -1,5 +1,5 @@
 import type { User } from '@/types'
-import { apiFetch, mockDelay, USE_MOCK } from './api-client'
+import { apiFetch, mockDelay, USE_MOCK, API_BASE_URL, } from './api-client'
 import { mockUser } from './mock-data'
 
 const TOKEN_KEY = 'temon_token'
@@ -97,16 +97,30 @@ export async function updateProfile(patch: Partial<User>): Promise<User> {
   )
 
   const user = mapUserResponse(res)
-  persistSession(getToken() ?? '', getRefreshToken() ?? undefined, user)
+    persistSession(getToken() ?? '', getRefreshToken() ?? undefined, user)
 
-  return user
-}
+    return user
+  }
 
-export function logout() {
-  if (typeof window === 'undefined') return
-  window.localStorage.removeItem(TOKEN_KEY)
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY)
-  window.localStorage.removeItem(USER_KEY)
+  export async function logout() {
+    if (typeof window === 'undefined') return
+
+    const token = getToken()
+
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+    } catch {
+     
+    } finally {
+      window.localStorage.removeItem(TOKEN_KEY)
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY)
+      window.localStorage.removeItem(USER_KEY)
+    }
 }
 
 export function persistSession(token: string, refreshToken?: string, user?: User) {
