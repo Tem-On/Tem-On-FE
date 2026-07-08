@@ -2,7 +2,47 @@ import type { EventDetail, EventProduct, EventSummary } from '@/types'
 import { apiFetch, mockDelay, USE_MOCK } from './api-client'
 import { mockEventProducts, mockEvents, mockProducts } from './mock-data'
 
+/**
+ * 💡 백엔드에서 직접 내려주는 한글 카테고리명(categoryName)을
+ * 프론트엔드 메인 화면의 4대 핵심 탭 컴포넌트 구조에 맞게 그룹핑합니다.
+ */
+const BE_CATEGORY_MAP: Record<string, string> = {
+  // 1. 패션 그룹
+  '패션': '패션',
+  '신발': '패션',
+  '가방': '패션',
+  '액세서리': '패션',
+
+  // 2. 전자기기 그룹
+  '전자기기': '전자기기',
+  '디지털기기': '전자기기',
+  '생활가전': '전자기기',
+
+  // 3. 리빙 그룹
+  '라이프스타일': '리빙',
+  '생활용품': '리빙',
+  '인테리어': '리빙',
+  '식품': '리빙',       // 식품, 반려동물 등도 리빙/라이프스타일 탭으로 편입
+  '반려동물': '리빙',
+  '완구': '리빙',
+  '도서': '리빙',
+
+  // 4. 뷰티 그룹
+  '뷰티': '뷰티',
+  '헬스/건강': '뷰티'
+}
+
 function mapToEventProduct(raw: any): EventProduct {
+  if (!raw) return {} as EventProduct;
+  
+  // 💡 범인 검거: 백엔드가 내려주는 진짜 카테고리 필드는 'categoryName'이었습니다!
+  // 혹시 모를 기존 필드명(category) 스펙도 방어용으로 함께 둡니다.
+  const rawCategory = raw.categoryName ?? raw.category ?? raw.productCategory ?? '';
+  
+  // 텍스트 매핑 (공백 제거 후 매칭, 일치하는 그룹이 없으면 기본값 '패션'으로 안착)
+  const cleanKey = String(rawCategory).trim();
+  const resolvedCategory = BE_CATEGORY_MAP[cleanKey] ?? '패션';
+
   return {
     id: String(raw.id ?? ''),
     eventId: String(raw.eventId ?? raw.event_id ?? raw.event?.id ?? ''),
@@ -23,15 +63,9 @@ function mapToEventProduct(raw: any): EventProduct {
     remainingStock: raw.remainingStock ?? raw.remaining_stock ?? 0,
     reservedStock: raw.reservedStock ?? raw.reserved_stock ?? 0,
     soldCount: raw.soldCount ?? raw.sold_count ?? 0,
-
-    status:
-      raw.status ??
-      raw.eventProductStatus ??
-      raw.event_product_status ??
-      'ON_SALE',
-
+    status: raw.status ?? raw.eventProductStatus ?? 'ON_SALE',
     description: raw.description ?? '',
-    category: raw.category ?? raw.categoryName ?? '기타',
+    category: resolvedCategory // 🎯 정제 완료된 4대 메인 탭 이름 주입
   }
 }
 
@@ -99,7 +133,6 @@ export async function getEventProduct(
 
     return mockDelay(ep)
   }
-
   const data = await apiFetch<any>(`/api/event-products/${eventProductId}`)
   return mapToEventProduct(data)
 }
@@ -113,7 +146,6 @@ export async function getPopularEventProducts(): Promise<EventProduct[]> {
 
     return mockDelay(list)
   }
-
   const data = await apiFetch<any[]>('/api/event-products/popular')
   return (data ?? []).map(mapToEventProduct)
 }
@@ -126,7 +158,6 @@ export async function getShowcaseProducts(): Promise<EventProduct[]> {
 
     return mockDelay(list)
   }
-
   const data = await apiFetch<any[]>('/api/event-products/showcase')
   return (data ?? []).map(mapToEventProduct)
 }
