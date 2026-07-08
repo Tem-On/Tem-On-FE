@@ -2,7 +2,11 @@ export function formatKRW(value: number): string {
   return `${value.toLocaleString('ko-KR')}원`
 }
 
-export function formatNumber(value: number): string {
+// export function formatNumber(value: number): string {
+//   return value.toLocaleString('ko-KR')
+// }
+export function formatNumber(value: number | undefined | null): string {
+  if (value === undefined || value === null) return '0'
   return value.toLocaleString('ko-KR')
 }
 

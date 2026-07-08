@@ -12,9 +12,10 @@ import type {
 } from '@/types'
 
 export function EventStatusBadge({ status }: { status: EventStatus }) {
-  const meta = eventStatusMeta[status]
+  // 💡 방어 코드 추가
+  const meta = eventStatusMeta[status] || { label: status, variant: 'outline' }
   return (
-    <Badge variant={meta.className ? 'default' : meta.variant} className={cn(meta.className)}>
+    <Badge variant={(meta as any).className ? 'default' : (meta as any).variant} className={cn((meta as any).className)}>
       {meta.label}
     </Badge>
   )
@@ -25,18 +26,20 @@ export function EventProductStatusBadge({
 }: {
   status: EventProductStatus
 }) {
-  const meta = eventProductStatusMeta[status]
+  // 💡 ⭐️ 핵심 해결 지점: 백엔드가 보낸 status 키값이 없어도 터지지 않게 기본값 매핑
+  const meta = eventProductStatusMeta[status] || { label: status, variant: 'outline' }
   return (
-    <Badge variant={meta.className ? 'default' : meta.variant} className={cn(meta.className)}>
+    <Badge variant={(meta as any).className ? 'default' : (meta as any).variant} className={cn((meta as any).className)}>
       {meta.label}
     </Badge>
   )
 }
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const meta = orderStatusMeta[status]
+  // 💡 방어 코드 추가
+  const meta = orderStatusMeta[status] || { label: status, variant: 'outline' }
   return (
-    <Badge variant={meta.className ? 'default' : meta.variant} className={cn(meta.className)}>
+    <Badge variant={(meta as any).className ? 'default' : (meta as any).variant} className={cn((meta as any).className)}>
       {meta.label}
     </Badge>
   )
