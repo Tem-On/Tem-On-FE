@@ -1,91 +1,69 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { Users } from 'lucide-react'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { StockBar } from '@/components/stock-bar'
-import { EventProductStatusBadge } from '@/components/status-badge'
-import { LiveIndicator } from '@/components/live-indicator'
-import { formatKRW, discountRate } from '@/lib/format'
-import { subscribeStock } from '@/services/realtime.service'
+import { ShoppingCart } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import type { EventProduct } from '@/types'
 
 export function EventProductCard({ product }: { product: EventProduct }) {
-  const router = useRouter()
-  const [remaining, setRemaining] = useState(product.remainingStock)
-  const [status, setStatus] = useState(product.status)
-
-  useEffect(() => {
-    if (product.status !== 'ON_SALE') return
-    const unsub = subscribeStock(
-      product.id,
-      (msg) => {
-        setRemaining(msg.remainingStock)
-        setStatus(msg.status)
-      },
-      {
-        remainingStock: product.remainingStock,
-        reservedStock: product.reservedStock,
-        soldCount: product.soldCount,
-      },
-    )
-    return unsub
-  }, [product])
-
-  const soldOut = status === 'SOLD_OUT' || remaining <= 0
-  const rate = discountRate(product.originalPrice, product.eventPrice)
+  const discountRate =
+    product.originalPrice > 0
+      ? Math.round(
+          ((product.originalPrice - product.eventPrice) /
+            product.originalPrice) *
+            100,
+        )
+      : 0
 
   return (
-    <Card className="flex flex-col overflow-hidden">
-      <div className="relative aspect-square bg-muted">
-        <Image
-          src={product.image || '/placeholder.svg'}
-          alt={product.name}
-          fill
-          sizes="(max-width: 768px) 50vw, 25vw"
-          className="object-cover"
-        />
-        <div className="absolute left-3 top-3">
-          <EventProductStatusBadge status={soldOut ? 'SOLD_OUT' : status} />
-        </div>
-        {status === 'ON_SALE' && !soldOut && (
-          <div className="absolute right-3 top-3">
-            <LiveIndicator label="재고 LIVE" />
-          </div>
-        )}
-      </div>
+    <Card
+      size="sm"
+      className="group gap-0 overflow-hidden py-0 transition-all hover:ring-2 hover:ring-primary/40"
+    >
+      <Link href={`/event-products/${product.id}`} className="flex flex-col">
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          <Image
+            src={product.image || '/placeholder.svg'}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
 
-      <CardContent className="flex flex-1 flex-col gap-2.5">
-        <h3 className="line-clamp-1 font-semibold">{product.name}</h3>
-        <div className="flex items-baseline gap-2">
-          {rate > 0 && (
-            <span className="text-base font-bold text-danger">{rate}%</span>
+          {discountRate > 0 && (
+            <div className="absolute left-2 top-2 rounded bg-danger px-2 py-1 text-xs font-bold text-white">
+              {discountRate}%
+            </div>
           )}
-          <span className="text-lg font-bold">
-            {formatKRW(product.eventPrice)}
-          </span>
         </div>
-        <span className="text-sm text-muted-foreground line-through">
-          {formatKRW(product.originalPrice)}
-        </span>
-        <StockBar remaining={remaining} total={product.totalStock} className="mt-1" />
-      </CardContent>
 
-      <CardFooter className="bg-transparent border-0 pt-0">
-        <Button
-          className="w-full"
-          disabled={soldOut || status === 'STOPPED'}
-          onClick={() =>
-            router.push(`/queue/${product.eventId}?product=${product.id}`)
-          }
-        >
-          <Users data-icon="inline-start" />
-          {soldOut ? '품절' : '대기열 입장'}
-        </Button>
-      </CardFooter>
+        <CardContent className="flex flex-col gap-2 p-3">
+          <p className="text-xs text-muted-foreground">{product.category}</p>
+
+          <h3 className="line-clamp-2 text-sm font-semibold">
+            {product.name}
+          </h3>
+
+          <div className="flex flex-col">
+            {product.originalPrice > product.eventPrice && (
+              <span className="text-xs text-muted-foreground line-through">
+                {product.originalPrice.toLocaleString()}원
+              </span>
+            )}
+
+            <span className="text-base font-bold">
+              {product.eventPrice.toLocaleString()}원
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>구매 제한 {product.purchaseLimit ?? 1}개</span>
+            <span className="flex items-center gap-1">
+              <ShoppingCart className="size-3.5" />
+              {product.status}
+            </span>
+          </div>
+        </CardContent>
+      </Link>
     </Card>
   )
 }

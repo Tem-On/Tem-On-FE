@@ -45,10 +45,6 @@ export interface EventSummary {
   productCount: number
 }
 
-export interface EventDetail extends EventSummary {
-  products: EventProduct[]
-}
-
 export interface EventProduct {
   id: string
   eventId: string
@@ -57,13 +53,26 @@ export interface EventProduct {
   image: string
   originalPrice: number
   eventPrice: number
+  purchaseLimit?: number
   totalStock: number
   remainingStock: number
   reservedStock: number
   soldCount: number
-  status: EventProductStatus
-  description?: string
-  category?: string
+  status: string
+  description: string
+  category: string
+}
+
+export interface EventDetail {
+  id: string
+  title: string
+  description: string
+  image?: string
+  status: EventStatus
+  startAt: string
+  endAt: string
+  productCount: number
+  products: EventProduct[]
 }
 
 export interface QueueState {
