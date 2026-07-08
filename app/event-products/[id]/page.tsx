@@ -87,6 +87,16 @@ export default async function EventProductPage({
               </div>
 
               <div className="flex justify-between">
+                <span>재고</span>
+                <span>{product.remainingStock}개</span>
+                </div>
+
+                <div className="flex justify-between">
+                <span>판매량</span>
+                <span>{product.soldCount}개</span>
+            </div>
+
+              <div className="flex justify-between">
                 <span>상태</span>
                 <span>{product.status}</span>
               </div>
