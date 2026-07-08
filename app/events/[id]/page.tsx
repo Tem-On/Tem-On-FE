@@ -15,7 +15,9 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+
   let event
+
   try {
     event = await getEventDetail(id)
   } catch {
@@ -38,6 +40,7 @@ export default async function EventDetailPage({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground via-foreground/70 to-foreground/40" />
         </div>
+
         <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 md:py-16">
           <div className="flex items-center gap-2">
             <EventStatusBadge status={event.status} />
@@ -45,17 +48,21 @@ export default async function EventDetailPage({
               <LiveIndicator className="bg-background/15 text-background" />
             )}
           </div>
+
           <h1 className="max-w-2xl text-3xl font-bold text-balance md:text-4xl">
             {event.title}
           </h1>
+
           <p className="max-w-xl text-sm text-background/80 md:text-base">
             {event.description}
           </p>
+
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
               <Package className="size-4" />
               상품 {event.productCount}개
             </span>
+
             <span className="flex items-center gap-1.5">
               <CalendarClock className="size-4" />
               {isOpen ? (
@@ -76,6 +83,7 @@ export default async function EventDetailPage({
               재고는 실시간으로 변동됩니다. 원하는 상품의 대기열에 입장하세요.
             </p>
           </div>
+
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {event.products.map((product) => (
               <EventProductCard key={product.id} product={product} />

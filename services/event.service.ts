@@ -47,10 +47,18 @@ function mapToEventProduct(raw: any): EventProduct {
     id: String(raw.id ?? ''),
     eventId: String(raw.eventId ?? raw.event_id ?? raw.event?.id ?? ''),
     productId: String(raw.productId ?? raw.product_id ?? ''),
+
     name: raw.name ?? raw.productName ?? '',
-    image: raw.image ?? raw.productImageUrl ?? raw.imageUrl ?? '/images/products/sneaker.png', // 이미지 필드명(productImageUrl)도 추가 보완!
+    image:
+      raw.image ??
+      raw.productImageUrl ??
+      raw.imageUrl ??
+      '/placeholder.svg',
+
     originalPrice: raw.originalPrice ?? raw.original_price ?? 0,
     eventPrice: raw.eventPrice ?? raw.event_price ?? 0,
+    purchaseLimit: raw.purchaseLimit ?? raw.purchase_limit ?? 1,
+
     totalStock: raw.totalStock ?? raw.total_stock ?? 0,
     remainingStock: raw.remainingStock ?? raw.remaining_stock ?? 0,
     reservedStock: raw.reservedStock ?? raw.reserved_stock ?? 0,
@@ -71,8 +79,10 @@ export async function getEvents(status?: string): Promise<EventSummary[]> {
     const list = status
       ? mockEvents.filter((e) => e.status === status)
       : mockEvents
+
     return mockDelay(list)
   }
+
   const query = status ? `?status=${status}` : ''
   return apiFetch<EventSummary[]>(`/api/events${query}`)
 }
@@ -80,16 +90,35 @@ export async function getEvents(status?: string): Promise<EventSummary[]> {
 export async function getEventDetail(eventId: string): Promise<EventDetail> {
   if (USE_MOCK) {
     const event = mockEvents.find((e) => e.id === eventId)
-    if (!event) throw new Error('이벤트를 찾을 수 없습니다.')
+
+    if (!event) {
+      throw new Error('이벤트를 찾을 수 없습니다.')
+    }
+
     const products = mockEventProducts.filter((p) => p.eventId === eventId)
     return mockDelay({ ...event, products })
   }
-  // 상세 페이지 상품 리스트 세탁기 처리
-  const res = await apiFetch<any>(`/api/events/${eventId}`)
-  if (res && Array.isArray(res.products)) {
-    res.products = res.products.map(mapToEventProduct)
+
+  const event = await apiFetch<EventDetail>(`/api/events/${eventId}`)
+  const products = await getEventProductsByEventId(eventId)
+
+  return {
+    ...event,
+    products,
+    productCount: products.length,
   }
-  return res as EventDetail
+}
+
+export async function getEventProductsByEventId(
+  eventId: string,
+): Promise<EventProduct[]> {
+  if (USE_MOCK) {
+    const products = mockEventProducts.filter((p) => p.eventId === eventId)
+    return mockDelay(products)
+  }
+
+  const data = await apiFetch<any[]>(`/api/events/${eventId}/products`)
+  return (data ?? []).map(mapToEventProduct)
 }
 
 export async function getEventProduct(
@@ -97,10 +126,13 @@ export async function getEventProduct(
 ): Promise<EventProduct> {
   if (USE_MOCK) {
     const ep = mockEventProducts.find((p) => p.id === eventProductId)
-    if (!ep) throw new Error('상품을 찾을 수 없습니다.')
+
+    if (!ep) {
+      throw new Error('상품을 찾을 수 없습니다.')
+    }
+
     return mockDelay(ep)
   }
-  // 단일 상품 상세 조회 시 세탁기 작동
   const data = await apiFetch<any>(`/api/event-products/${eventProductId}`)
   return mapToEventProduct(data)
 }
@@ -111,22 +143,21 @@ export async function getPopularEventProducts(): Promise<EventProduct[]> {
       .sort((a, b) => b.soldCount - a.soldCount)
       .slice(0, 4)
       .map(withCategory)
+
     return mockDelay(list)
   }
-  // 인기 상품 조회 시 세탁기 작동
   const data = await apiFetch<any[]>('/api/event-products/popular')
   return (data ?? []).map(mapToEventProduct)
 }
 
-// 카테고리별 쇼케이스: 판매중/판매 예정 상품에 카테고리를 채워 반환
 export async function getShowcaseProducts(): Promise<EventProduct[]> {
   if (USE_MOCK) {
     const list = mockEventProducts
       .filter((ep) => ep.status !== 'STOPPED')
       .map(withCategory)
+
     return mockDelay(list)
   }
-  // 쇼케이스 상품 조회 시 세탁기 작동
   const data = await apiFetch<any[]>('/api/event-products/showcase')
   return (data ?? []).map(mapToEventProduct)
 }
