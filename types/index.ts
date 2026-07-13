@@ -3,7 +3,13 @@
 // ============================================================
 
 export type EventStatus = 'OPEN' | 'UPCOMING' | 'CLOSED'
-export type EventProductStatus = 'ON_SALE' | 'SOLD_OUT' | 'READY' | 'STOPPED'
+
+export type EventProductStatus =
+  | 'ON_SALE'
+  | 'SOLD_OUT'
+  | 'READY'
+  | 'STOPPED'
+
 export type OrderStatus =
   | 'PENDING'
   | 'PAID'
@@ -11,8 +17,22 @@ export type OrderStatus =
   | 'SHIPPED'
   | 'DELIVERED'
   | 'CANCELLED'
-export type QueueStatus = 'WAITING' | 'READY' | 'ENTERED' | 'EXPIRED'
-export type QueueGateStatus = 'OPEN' | 'CLOSED'
+
+export type QueueStatus =
+  | 'WAITING'
+  | 'READY'
+  | 'ENTERED'
+  | 'EXPIRED'
+
+export type QueueGateStatus =
+  | 'OPEN'
+  | 'CLOSED'
+
+export type QueueRealtimeType =
+  | 'ENTER'
+  | 'EXPIRE'
+  | 'COMPLETE'
+  | 'RESET'
 
 export interface User {
   id: string
@@ -171,6 +191,8 @@ export interface QueueUpdateMessage {
   estimatedSeconds: number
   canEnter: boolean
   status: QueueStatus
+  type?: QueueRealtimeType
+  message?: string
 }
 
 export interface EventStatusMessage {
