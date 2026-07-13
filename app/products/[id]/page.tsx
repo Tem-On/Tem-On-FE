@@ -72,7 +72,12 @@ function ProductInner() {
 
   const soldOut = status === 'SOLD_OUT' || remaining <= 0
   const rate = discountRate(product.originalPrice, product.eventPrice)
-  const maxQty = Math.min(5, Math.max(1, remaining))
+
+  const maxQty = Math.min(
+    product.purchaseLimit ?? 1,
+    Math.max(1, remaining),
+  )
+
   const total = product.eventPrice * qty
 
   const handleOrder = async () => {
