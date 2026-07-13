@@ -132,7 +132,7 @@ function QueueInner() {
 
       const t = setTimeout(() => {
         if (eventProductId) {
-          router.replace(`/event-products/${eventProductId}?entered=1`)
+          router.replace(`/orders/${eventProductId}?entered=1`)
         } else {
           router.replace(`/events/${eventId}?entered=1`)
         }

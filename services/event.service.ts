@@ -153,7 +153,7 @@ export async function getPopularEventProducts(): Promise<EventProduct[]> {
 export async function getShowcaseProducts(): Promise<EventProduct[]> {
   if (USE_MOCK) {
     const list = mockEventProducts
-      .filter((ep) => ep.status !== 'STOPPED')
+      .filter((ep) => ep.status !== 'HIDDEN' && ep.status !== 'DELETED')
       .map(withCategory)
 
     return mockDelay(list)

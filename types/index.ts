@@ -5,10 +5,11 @@
 export type EventStatus = 'OPEN' | 'UPCOMING' | 'CLOSED'
 
 export type EventProductStatus =
+  | 'READY'
   | 'ON_SALE'
   | 'SOLD_OUT'
-  | 'READY'
-  | 'STOPPED'
+  | 'HIDDEN'
+  | 'DELETED'
 
 export type OrderStatus =
   | 'PENDING'
@@ -78,7 +79,7 @@ export interface EventProduct {
   remainingStock: number
   reservedStock: number
   soldCount: number
-  status: string
+  status: EventProductStatus
   description: string
   category: string
 }
