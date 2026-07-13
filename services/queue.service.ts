@@ -1,47 +1,137 @@
-import type { QueueState } from '@/types'
-import { apiFetch, mockDelay, USE_MOCK } from './api-client'
+import { apiFetch } from './api-client'
+import type { QueueState, QueueStatus } from '@/types'
 
-/**
- * 대기열 입장. 초기 순번을 반환합니다.
- * 실시간 순번 갱신은 WebSocket(STOMP) 구독으로 처리합니다.
- */
+type QueueEnterResponse = {
+  eventProductId: number
+  userId: number
+  rank: number
+  status: QueueStatus
+}
+
+type QueueRankResponse = {
+  rank: number
+}
+
+type QueueStatusResponse = {
+  status: string
+}
+
+type QueueAvailableResponse = {
+  available: boolean
+}
+
+type QueueEstimatedTimeResponse = {
+  estimatedSeconds: number
+}
+
+type QueueCurrentUsersResponse = {
+  currentUsers: number
+}
+
 export async function enterQueue(
-  eventId: string,
-  eventProductId?: string,
+  eventProductId: string,
 ): Promise<QueueState> {
-  if (USE_MOCK) {
-    const position = Math.floor(Math.random() * 400) + 120
-    return mockDelay<QueueState>({
-      eventId,
-      eventProductId,
-      position,
-      totalWaiting: position + Math.floor(Math.random() * 500),
-      estimatedSeconds: position * 3,
-      canEnter: false,
-      status: 'WAITING',
-    })
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  const enter = await apiFetch<QueueEnterResponse>(
+    `/api/queue/enter?${params.toString()}`,
+    {
+      method: 'POST',
+    },
+  )
+
+  const [currentUsers, estimatedTime, available] = await Promise.all([
+    getCurrentUsers(eventProductId),
+    getEstimatedTime(eventProductId),
+    getAvailable(eventProductId),
+  ])
+
+  return {
+    eventId: String(enter.eventProductId),
+    position: Number(enter.rank),
+    totalWaiting: Number(currentUsers.currentUsers),
+    estimatedSeconds: Number(estimatedTime.estimatedSeconds),
+    canEnter: Boolean(available.available),
+    status: available.available ? 'READY' : enter.status,
   }
-  return apiFetch<QueueState>(`/api/events/${eventId}/queue`, {
+}
+
+export async function getQueueRank(
+  eventProductId: string,
+): Promise<QueueRankResponse> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  return apiFetch<QueueRankResponse>(
+    `/api/queue/rank?${params.toString()}`,
+  )
+}
+
+export async function getQueueStatus(
+  eventProductId: string,
+): Promise<QueueStatusResponse> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  return apiFetch<QueueStatusResponse>(
+    `/api/queue/status?${params.toString()}`,
+  )
+}
+
+export async function getAvailable(
+  eventProductId: string,
+): Promise<QueueAvailableResponse> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  return apiFetch<QueueAvailableResponse>(
+    `/api/queue/available?${params.toString()}`,
+  )
+}
+
+export async function getEstimatedTime(
+  eventProductId: string,
+): Promise<QueueEstimatedTimeResponse> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  return apiFetch<QueueEstimatedTimeResponse>(
+    `/api/queue/estimated-time?${params.toString()}`,
+  )
+}
+
+export async function getCurrentUsers(
+  eventProductId: string,
+): Promise<QueueCurrentUsersResponse> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  return apiFetch<QueueCurrentUsersResponse>(
+    `/api/queue/current-users?${params.toString()}`,
+  )
+}
+
+export async function expireQueue(eventProductId: string): Promise<void> {
+  const params = new URLSearchParams({
+    eventProductId,
+  })
+
+  await apiFetch<void>(`/api/queue/expire?${params.toString()}`, {
     method: 'POST',
-    body: { eventProductId },
   })
 }
 
-export async function leaveQueue(eventId: string): Promise<void> {
-  if (USE_MOCK) return mockDelay(undefined)
-  return apiFetch<void>(`/api/events/${eventId}/queue`, { method: 'DELETE' })
-}
-
-export async function getQueueState(eventId: string): Promise<QueueState> {
-  if (USE_MOCK) {
-    return mockDelay<QueueState>({
-      eventId,
-      position: 240,
-      totalWaiting: 720,
-      estimatedSeconds: 720,
-      canEnter: false,
-      status: 'WAITING',
-    })
-  }
-  return apiFetch<QueueState>(`/api/events/${eventId}/queue`)
+export async function leaveQueue(
+  _eventProductId: string,
+): Promise<void> {
+  // 백엔드에 대기열 이탈 API가 아직 없음.
+  // 그래서 프론트에서는 일단 no-op 처리.
+  return Promise.resolve()
 }

@@ -50,6 +50,7 @@ function QueueRing({
           className="transition-[stroke-dashoffset] duration-700 ease-out"
         />
       </svg>
+
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
         <span className="text-xs font-medium text-muted-foreground">
           내 대기 순번
@@ -67,53 +68,87 @@ function QueueInner() {
   const router = useRouter()
   const params = useParams<{ eventId: string }>()
   const search = useSearchParams()
+
   const eventId = params.eventId
-  const productId = search.get('product') ?? undefined
+  const eventProductId = search.get('product') ?? undefined
 
   const [state, setState] = useState<QueueState | null>(null)
   const [entering, setEntering] = useState(false)
   const enteredRef = useRef(false)
 
   useEffect(() => {
-    let unsub: (() => void) | undefined
-    enterQueue(eventId, productId).then((initial) => {
-      setState(initial)
-      unsub = subscribeQueue(
-        eventId,
-        (msg) => {
-          setState((prev) => ({
-            ...(prev as QueueState),
-            position: msg.position,
-            totalWaiting: msg.totalWaiting,
-            estimatedSeconds: msg.estimatedSeconds,
-            canEnter: msg.canEnter,
-            status: msg.status,
-          }))
-        },
-        { position: initial.position, totalWaiting: initial.totalWaiting },
-      )
-    })
-    return () => unsub?.()
-  }, [eventId, productId])
+    if (!eventProductId) {
+      router.replace(`/events/${eventId}`)
+      return
+    }
 
-  // 입장 가능 상태가 되면 자동으로 상품 페이지로 이동
+    let unsub: (() => void) | undefined
+    let mounted = true
+
+    enterQueue(eventProductId)
+      .then((initial) => {
+        if (!mounted) return
+
+        setState(initial)
+
+        unsub = subscribeQueue(
+          eventProductId,
+          (msg) => {
+            setState((prev) => {
+              if (!prev) return prev
+
+              return {
+                ...prev,
+                position: msg.position ?? prev.position,
+                totalWaiting: msg.totalWaiting ?? prev.totalWaiting,
+                estimatedSeconds:
+                  msg.estimatedSeconds ?? prev.estimatedSeconds,
+                canEnter: msg.canEnter ?? prev.canEnter,
+                status: msg.status ?? prev.status,
+              }
+            })
+          },
+          {
+            position: initial.position,
+            totalWaiting: initial.totalWaiting,
+          },
+        )
+      })
+      .catch((error) => {
+        console.error('대기열 입장 실패:', error)
+        router.replace(`/events/${eventId}`)
+      })
+
+    return () => {
+      mounted = false
+      unsub?.()
+    }
+  }, [eventId, eventProductId, router])
+
   useEffect(() => {
     if (state?.canEnter && !enteredRef.current) {
       enteredRef.current = true
       setEntering(true)
+
       const t = setTimeout(() => {
-        if (productId) {
-          router.replace(`/products/${productId}?entered=1`)
+        if (eventProductId) {
+          router.replace(`/products/${eventProductId}?entered=1`)
         } else {
           router.replace(`/events/${eventId}?entered=1`)
         }
       }, 1400)
+
       return () => clearTimeout(t)
     }
-  }, [state?.canEnter, productId, eventId, router])
+  }, [state?.canEnter, eventProductId, eventId, router])
 
   const handleLeave = async () => {
-    await leaveQueue(eventId)
+    if (!eventProductId) {
+      router.replace(`/events/${eventId}`)
+      return
+    }
+
+    await leaveQueue(eventProductId)
     router.replace(`/events/${eventId}`)
   }
 
@@ -134,17 +169,20 @@ function QueueInner() {
             <span className="flex size-16 items-center justify-center rounded-full bg-success/15 text-success">
               <PartyPopper className="size-8" />
             </span>
+
             <div className="flex flex-col gap-1">
               <h1 className="text-xl font-bold">입장 순서가 되었습니다!</h1>
               <p className="text-sm text-muted-foreground">
                 구매 페이지로 이동합니다.
               </p>
             </div>
+
             {entering && <Spinner className="size-5" />}
           </div>
         ) : (
           <>
             <LiveIndicator label="대기열 LIVE" />
+
             <div className="flex flex-col gap-1">
               <h1 className="text-lg font-bold text-balance">
                 잠시만 기다려주세요
@@ -154,10 +192,7 @@ function QueueInner() {
               </p>
             </div>
 
-            <QueueRing
-              position={state.position}
-              total={state.totalWaiting}
-            />
+            <QueueRing position={state.position} total={state.totalWaiting} />
 
             <div className="grid w-full grid-cols-2 gap-3">
               <div className="flex flex-col items-center gap-1 rounded-xl bg-muted/60 py-4">
@@ -169,6 +204,7 @@ function QueueInner() {
                   총 대기 인원
                 </span>
               </div>
+
               <div className="flex flex-col items-center gap-1 rounded-xl bg-muted/60 py-4">
                 <Clock className="size-4 text-muted-foreground" />
                 <span className="font-mono text-lg font-bold tabular-nums">

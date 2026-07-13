@@ -103,10 +103,10 @@ export default async function EventProductPage({
 
             </div>
 
-            <Link href={`/queue/${product.id}`}>
-              <Button className="w-full">
-                대기열 입장
-              </Button>
+            <Link href={`/queue/${product.eventId}?product=${product.id}`}>
+                <Button className="w-full">
+                    대기열 입장
+                </Button>
             </Link>
 
           </div>
