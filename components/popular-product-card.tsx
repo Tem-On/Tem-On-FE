@@ -18,7 +18,7 @@ export function PopularProductCard({
   return (
     <Card size="sm" className="group gap-0 py-0">
       <Link
-        href={`/products/${product.id}`}
+        href={`/event-products/${product.id}`}
         className="flex flex-col"
       >
         <div className="relative aspect-square overflow-hidden bg-muted">
