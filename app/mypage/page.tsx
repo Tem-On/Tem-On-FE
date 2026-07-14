@@ -195,7 +195,7 @@ export default function MyPage() {
     }
 
     const confirmed = window.confirm(
-      `${order.orderNumber}\n\n해당 결제를 취소하시겠습니까?\n취소 후 재고가 복구됩니다.`,
+      `${order.orderNumber}\n\n해당 결제를 취소하시겠습니까?\n결제 취소 시 환불까지 최대 3~5일 정도 소요될 수 있습니다.`,
     )
 
     if (!confirmed) {
