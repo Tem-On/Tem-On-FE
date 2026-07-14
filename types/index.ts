@@ -134,6 +134,8 @@ export interface Order {
   status: OrderStatus
   createdAt: string
   paidAt?: string
+  canceledAt?: string | null
+  paymentId?: number | null
 }
 
 export interface Payment {

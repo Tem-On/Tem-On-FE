@@ -32,6 +32,7 @@ interface BackendOrderResponse {
   status: string
   orderedAt: string
   canceledAt?: string | null
+  paymentId?: number | null
   items: BackendOrderItemResponse[]
 }
 
@@ -92,6 +93,8 @@ function mapBackendOrder(
     totalAmount: order.totalAmount,
     status: mapOrderStatus(order.status),
     createdAt: order.orderedAt,
+    canceledAt: order.canceledAt ?? null,
+    paymentId: order.paymentId ?? null,
   }
 }
 
@@ -118,6 +121,8 @@ export async function createOrder(
       totalAmount,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
+      paymentId: null,
+      canceledAt: null,
     }
 
     return mockDelay(order, 500)
@@ -142,17 +147,6 @@ export async function createOrder(
   return mapBackendOrder(res)
 }
 
-/**
- * 결제 요청 생성
- *
- * POST /api/payments
- *
- * body:
- * {
- *   orderId: number,
- *   method: 'CARD' | 'KAKAO_PAY' | 'NAVER_PAY'
- * }
- */
 export async function requestPayment(
   orderId: string,
   method: PaymentMethod,
@@ -181,11 +175,6 @@ export async function requestPayment(
   })
 }
 
-/**
- * 결제 성공 처리
- *
- * POST /api/payments/{paymentId}/success
- */
 export async function successPayment(
   paymentId: number,
 ): Promise<Payment> {
@@ -210,11 +199,6 @@ export async function successPayment(
   )
 }
 
-/**
- * 결제 실패 처리
- *
- * POST /api/payments/{paymentId}/fail
- */
 export async function failPayment(
   paymentId: number,
 ): Promise<Payment> {
@@ -239,11 +223,6 @@ export async function failPayment(
   )
 }
 
-/**
- * 결제 취소 처리
- *
- * POST /api/payments/{paymentId}/cancel
- */
 export async function cancelPayment(
   paymentId: number,
 ): Promise<Payment> {
@@ -268,12 +247,6 @@ export async function cancelPayment(
   )
 }
 
-/**
- * 현재 프로젝트용 임시 결제 처리
- *
- * 1. 결제 요청 생성
- * 2. 반환받은 paymentId로 바로 성공 처리
- */
 export async function payOrder(
   orderId: string,
   method: PaymentMethod,

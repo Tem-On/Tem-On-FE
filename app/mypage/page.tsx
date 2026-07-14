@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Pencil,
   UserRoundX,
+  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ShopShell } from '@/components/shop-shell'
@@ -42,7 +43,10 @@ import {
   formatDateTime,
   formatNumber,
 } from '@/lib/format'
-import { getMyOrders } from '@/services/order.service'
+import {
+  cancelPayment,
+  getMyOrders,
+} from '@/services/order.service'
 import {
   updateProfile,
   withdraw,
@@ -63,18 +67,31 @@ export default function MyPage() {
     logout,
   } = useAuth()
 
-  const [orders, setOrders] = useState<Order[] | null>(null)
+  const [orders, setOrders] =
+    useState<Order[] | null>(null)
 
-  const [isEditingNickname, setIsEditingNickname] =
-    useState(false)
+  const [
+    isEditingNickname,
+    setIsEditingNickname,
+  ] = useState(false)
 
-  const [nickname, setNickname] = useState('')
+  const [nickname, setNickname] =
+    useState('')
 
-  const [isUpdatingNickname, setIsUpdatingNickname] =
-    useState(false)
+  const [
+    isUpdatingNickname,
+    setIsUpdatingNickname,
+  ] = useState(false)
 
-  const [isWithdrawing, setIsWithdrawing] =
-    useState(false)
+  const [
+    isWithdrawing,
+    setIsWithdrawing,
+  ] = useState(false)
+
+  const [
+    cancelingPaymentId,
+    setCancelingPaymentId,
+  ] = useState<number | null>(null)
 
   useEffect(() => {
     if (ready && !isLoggedIn) {
@@ -87,18 +104,25 @@ export default function MyPage() {
       return
     }
 
-    getMyOrders()
-      .then(setOrders)
-      .catch((error) => {
-        console.error(error)
-        setOrders([])
-        toast.error('주문 내역을 불러오지 못했습니다.')
-      })
+    void loadOrders()
   }, [isLoggedIn])
 
   useEffect(() => {
     setNickname(user?.nickname ?? '')
   }, [user])
+
+  const loadOrders = async () => {
+    try {
+      const result = await getMyOrders()
+      setOrders(result)
+    } catch (error) {
+      console.error(error)
+      setOrders([])
+      toast.error(
+        '주문 내역을 불러오지 못했습니다.',
+      )
+    }
+  }
 
   const handleStartNicknameEdit = () => {
     setNickname(user?.nickname ?? '')
@@ -111,15 +135,22 @@ export default function MyPage() {
   }
 
   const handleUpdateNickname = async () => {
-    const trimmedNickname = nickname.trim()
+    const trimmedNickname =
+      nickname.trim()
 
     if (!trimmedNickname) {
-      toast.error('닉네임을 입력해 주세요.')
+      toast.error(
+        '닉네임을 입력해 주세요.',
+      )
       return
     }
 
-    if (trimmedNickname === user?.nickname) {
-      toast.error('현재 닉네임과 동일합니다.')
+    if (
+      trimmedNickname === user?.nickname
+    ) {
+      toast.error(
+        '현재 닉네임과 동일합니다.',
+      )
       return
     }
 
@@ -133,7 +164,9 @@ export default function MyPage() {
       notifyAuthChange()
       setIsEditingNickname(false)
 
-      toast.success('닉네임이 변경되었습니다.')
+      toast.success(
+        '닉네임이 변경되었습니다.',
+      )
     } catch (error) {
       console.error(error)
 
@@ -148,6 +181,58 @@ export default function MyPage() {
     }
   }
 
+  const handleCancelPayment = async (
+    order: Order,
+  ) => {
+    if (
+      order.status !== 'PAID' ||
+      !order.paymentId
+    ) {
+      toast.error(
+        '취소할 수 있는 결제 정보가 없습니다.',
+      )
+      return
+    }
+
+    const confirmed = window.confirm(
+      `${order.orderNumber}\n\n해당 결제를 취소하시겠습니까?\n취소 후 재고가 복구됩니다.`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setCancelingPaymentId(
+        order.paymentId,
+      )
+
+      await cancelPayment(
+        order.paymentId,
+      )
+
+      toast.success(
+        '결제가 취소되었습니다.',
+      )
+
+      await loadOrders()
+    } catch (error) {
+      console.error(
+        '결제 취소 실패:',
+        error,
+      )
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : '결제 취소에 실패했습니다.'
+
+      toast.error(message)
+    } finally {
+      setCancelingPaymentId(null)
+    }
+  }
+
   const handleWithdraw = async () => {
     const confirmed = window.confirm(
       '정말 회원 탈퇴하시겠습니까?\n탈퇴한 계정은 복구할 수 없습니다.',
@@ -157,9 +242,10 @@ export default function MyPage() {
       return
     }
 
-    const doubleConfirmed = window.confirm(
-      '회원 탈퇴를 진행하면 현재 계정에서 로그아웃됩니다.\n계속하시겠습니까?',
-    )
+    const doubleConfirmed =
+      window.confirm(
+        '회원 탈퇴를 진행하면 현재 계정에서 로그아웃됩니다.\n계속하시겠습니까?',
+      )
 
     if (!doubleConfirmed) {
       return
@@ -172,7 +258,9 @@ export default function MyPage() {
 
       notifyAuthChange()
 
-      toast.success('회원 탈퇴가 완료되었습니다.')
+      toast.success(
+        '회원 탈퇴가 완료되었습니다.',
+      )
 
       router.replace('/')
       router.refresh()
@@ -197,7 +285,9 @@ export default function MyPage() {
       router.refresh()
     } catch (error) {
       console.error(error)
-      toast.error('로그아웃에 실패했습니다.')
+      toast.error(
+        '로그아웃에 실패했습니다.',
+      )
     }
   }
 
@@ -222,11 +312,15 @@ export default function MyPage() {
                   <Avatar className="size-14">
                     <AvatarImage
                       src={user?.profileImage}
-                      alt={user?.nickname ?? '사용자'}
+                      alt={
+                        user?.nickname ??
+                        '사용자'
+                      }
                     />
 
                     <AvatarFallback className="text-lg">
-                      {user?.nickname?.[0] ?? 'U'}
+                      {user?.nickname?.[0] ??
+                        'U'}
                     </AvatarFallback>
                   </Avatar>
 
@@ -251,7 +345,10 @@ export default function MyPage() {
                       </span>
 
                       <span className="font-bold tabular-nums">
-                        {formatNumber(user?.point ?? 0)}P
+                        {formatNumber(
+                          user?.point ?? 0,
+                        )}
+                        P
                       </span>
                     </div>
                   </div>
@@ -277,7 +374,8 @@ export default function MyPage() {
                   </h2>
 
                   <p className="text-sm text-muted-foreground">
-                    마이페이지에 표시되는 닉네임을 변경할 수
+                    마이페이지에 표시되는
+                    닉네임을 변경할 수
                     있습니다.
                   </p>
                 </div>
@@ -288,22 +386,30 @@ export default function MyPage() {
                       type="text"
                       value={nickname}
                       onChange={(event) =>
-                        setNickname(event.target.value)
+                        setNickname(
+                          event.target.value,
+                        )
                       }
                       onKeyDown={(event) => {
                         if (
-                          event.key === 'Enter' &&
+                          event.key ===
+                            'Enter' &&
                           !isUpdatingNickname
                         ) {
                           void handleUpdateNickname()
                         }
 
-                        if (event.key === 'Escape') {
+                        if (
+                          event.key ===
+                          'Escape'
+                        ) {
                           handleCancelNicknameEdit()
                         }
                       }}
                       maxLength={20}
-                      disabled={isUpdatingNickname}
+                      disabled={
+                        isUpdatingNickname
+                      }
                       placeholder="새 닉네임을 입력하세요"
                       className="h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50"
                     />
@@ -311,8 +417,12 @@ export default function MyPage() {
                     <div className="flex gap-2">
                       <Button
                         type="button"
-                        onClick={handleUpdateNickname}
-                        disabled={isUpdatingNickname}
+                        onClick={
+                          handleUpdateNickname
+                        }
+                        disabled={
+                          isUpdatingNickname
+                        }
                       >
                         {isUpdatingNickname
                           ? '변경 중...'
@@ -322,8 +432,12 @@ export default function MyPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleCancelNicknameEdit}
-                        disabled={isUpdatingNickname}
+                        onClick={
+                          handleCancelNicknameEdit
+                        }
+                        disabled={
+                          isUpdatingNickname
+                        }
                       >
                         취소
                       </Button>
@@ -344,7 +458,9 @@ export default function MyPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handleStartNicknameEdit}
+                      onClick={
+                        handleStartNicknameEdit
+                      }
                     >
                       <Pencil className="size-4" />
                       닉네임 변경
@@ -362,7 +478,8 @@ export default function MyPage() {
                   </h2>
 
                   <p className="text-sm text-muted-foreground">
-                    회원 탈퇴 시 계정을 다시 복구할 수 없습니다.
+                    회원 탈퇴 시 계정을 다시
+                    복구할 수 없습니다.
                   </p>
                 </div>
 
@@ -373,7 +490,8 @@ export default function MyPage() {
                     </span>
 
                     <span className="text-sm text-muted-foreground">
-                      TEM-ON 계정 이용을 종료합니다.
+                      TEM-ON 계정 이용을
+                      종료합니다.
                     </span>
                   </div>
 
@@ -397,6 +515,7 @@ export default function MyPage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Package className="size-5" />
+
               <h2 className="text-xl font-bold">
                 주문 내역
               </h2>
@@ -419,86 +538,149 @@ export default function MyPage() {
                   </EmptyTitle>
 
                   <EmptyDescription>
-                    진행 중인 이벤트에서 첫 구매를 시작해보세요.
+                    진행 중인 이벤트에서 첫
+                    구매를 시작해보세요.
                   </EmptyDescription>
                 </EmptyHeader>
 
                 <EmptyContent>
                   <Button
                     nativeButton={false}
-                    render={<Link href="/events" />}
+                    render={
+                      <Link href="/events" />
+                    }
                   >
                     이벤트 보러가기
                   </Button>
                 </EmptyContent>
               </Empty>
             ) : (
-              orders.map((order) => (
-                <Card key={order.id}>
-                  <CardHeader className="flex-row items-center justify-between gap-2 pb-3">
-                    <div className="flex flex-col gap-0.5">
-                      <CardTitle className="text-sm text-muted-foreground">
-                        {order.orderNumber}
-                      </CardTitle>
+              orders.map((order) => {
+                const canCancel =
+                  order.status === 'PAID' &&
+                  order.paymentId != null
 
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(order.createdAt)}
-                      </span>
-                    </div>
+                const isCanceling =
+                  order.paymentId != null &&
+                  cancelingPaymentId ===
+                    order.paymentId
 
-                    <OrderStatusBadge
-                      status={order.status}
-                    />
-                  </CardHeader>
+                return (
+                  <Card key={order.id}>
+                    <CardHeader className="flex-row items-center justify-between gap-2 pb-3">
+                      <div className="flex flex-col gap-0.5">
+                        <CardTitle className="text-sm text-muted-foreground">
+                          {order.orderNumber}
+                        </CardTitle>
 
-                  <CardContent className="flex flex-col gap-3">
-                    <Separator />
-
-                    {order.items.map((item) => (
-                      <div
-                        key={item.eventProductId}
-                        className="flex items-center gap-3"
-                      >
-                        <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border bg-muted">
-                          <Image
-                            src={
-                              item.image ||
-                              '/placeholder.svg'
-                            }
-                            alt={item.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        </div>
-
-                        <div className="flex flex-1 flex-col">
-                          <span className="text-sm font-medium">
-                            {item.name}
-                          </span>
-
-                          <span className="text-xs text-muted-foreground">
-                            {formatKRW(item.eventPrice)} ·{' '}
-                            {item.quantity}개
-                          </span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(
+                            order.createdAt,
+                          )}
+                        </span>
                       </div>
-                    ))}
 
-                    <Separator />
+                      <OrderStatusBadge
+                        status={order.status}
+                      />
+                    </CardHeader>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        총 결제금액
-                      </span>
+                    <CardContent className="flex flex-col gap-3">
+                      <Separator />
 
-                      <span className="font-bold">
-                        {formatKRW(order.totalAmount)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                      {order.items.map(
+                        (item) => (
+                          <div
+                            key={
+                              item.eventProductId
+                            }
+                            className="flex items-center gap-3"
+                          >
+                            <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border bg-muted">
+                              <Image
+                                src={
+                                  item.image ||
+                                  '/placeholder.svg'
+                                }
+                                alt={item.name}
+                                fill
+                                sizes="48px"
+                                className="object-cover"
+                              />
+                            </div>
+
+                            <div className="flex flex-1 flex-col">
+                              <span className="text-sm font-medium">
+                                {item.name}
+                              </span>
+
+                              <span className="text-xs text-muted-foreground">
+                                {formatKRW(
+                                  item.eventPrice,
+                                )}{' '}
+                                · {item.quantity}
+                                개
+                              </span>
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+                      <Separator />
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          총 결제금액
+                        </span>
+
+                        <span className="font-bold">
+                          {formatKRW(
+                            order.totalAmount,
+                          )}
+                        </span>
+                      </div>
+
+                      {canCancel && (
+                        <>
+                          <Separator />
+
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() =>
+                                void handleCancelPayment(
+                                  order,
+                                )
+                              }
+                              disabled={
+                                isCanceling
+                              }
+                            >
+                              <XCircle className="size-4" />
+
+                              {isCanceling
+                                ? '취소 처리 중...'
+                                : '결제 취소'}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+
+                      {order.status ===
+                        'CANCELLED' &&
+                        order.canceledAt && (
+                          <p className="text-right text-xs text-muted-foreground">
+                            취소일시:{' '}
+                            {formatDateTime(
+                              order.canceledAt,
+                            )}
+                          </p>
+                        )}
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>
