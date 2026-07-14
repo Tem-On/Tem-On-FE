@@ -1,5 +1,11 @@
 import type { User } from '@/types'
-import { apiFetch, mockDelay, USE_MOCK, API_BASE_URL, } from './api-client'
+import {
+  apiFetch,
+  mockDelay,
+  USE_MOCK,
+  API_BASE_URL,
+  clearStoredSession,
+} from './api-client'
 import { mockUser } from './mock-data'
 
 const TOKEN_KEY = 'temon_token'
@@ -24,6 +30,11 @@ interface UserResponse {
   status: string
 }
 
+interface JwtPayload {
+  exp?: number
+  [key: string]: unknown
+}
+
 function mapUserResponse(res: UserResponse): User {
   return {
     id: String(res.id),
@@ -36,8 +47,60 @@ function mapUserResponse(res: UserResponse): User {
   }
 }
 
+function parseJwtPayload(token: string): JwtPayload | null {
+  try {
+    const parts = token.split('.')
+
+    if (parts.length !== 3) {
+      return null
+    }
+
+    const payload = parts[1]
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+
+    const paddedPayload = payload.padEnd(
+      payload.length + ((4 - (payload.length % 4)) % 4),
+      '=',
+    )
+
+    const decodedPayload = decodeURIComponent(
+      Array.from(atob(paddedPayload))
+        .map(
+          (character) =>
+            `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`,
+        )
+        .join(''),
+    )
+
+    return JSON.parse(decodedPayload) as JwtPayload
+  } catch {
+    return null
+  }
+}
+
+export function isTokenExpired(token: string): boolean {
+  if (USE_MOCK && token === 'mock-token') {
+    return false
+  }
+
+  const payload = parseJwtPayload(token)
+
+  if (!payload || typeof payload.exp !== 'number') {
+    return true
+  }
+
+  return Date.now() >= payload.exp * 1000
+}
+
+export function clearSession(): void {
+  clearStoredSession()
+}
+
 export function getKakaoAuthorizeUrl(): string {
-  if (USE_MOCK) return '/auth/callback?mock=1'
+  if (USE_MOCK) {
+    return '/auth/callback?mock=1'
+  }
 
   return (
     'https://kauth.kakao.com/oauth/authorize' +
@@ -54,8 +117,12 @@ export async function loginWithKakao(code?: string): Promise<User> {
     return user
   }
 
+  if (!code) {
+    throw new Error('카카오 인가 코드가 없습니다.')
+  }
+
   const tokenRes = await apiFetch<TokenResponse>(
-    `/api/auth/oauth/kakao?code=${code}`,
+    `/api/auth/oauth/kakao?code=${encodeURIComponent(code)}`,
     {
       method: 'GET',
     },
@@ -63,73 +130,120 @@ export async function loginWithKakao(code?: string): Promise<User> {
 
   persistSession(tokenRes.accessToken, tokenRes.refreshToken)
 
-  const user = await fetchMe()
+  try {
+    const user = await fetchMe()
 
-  if (!user) {
-    throw new Error('사용자 정보를 가져오지 못했습니다.')
+    if (!user) {
+      throw new Error('사용자 정보를 가져오지 못했습니다.')
+    }
+
+    persistSession(tokenRes.accessToken, tokenRes.refreshToken, user)
+
+    return user
+  } catch (error) {
+    clearSession()
+    throw error
   }
-
-  persistSession(tokenRes.accessToken, tokenRes.refreshToken, user)
-
-  return user
 }
 
 export async function fetchMe(): Promise<User | null> {
-  if (USE_MOCK) return getStoredUser()
+  if (USE_MOCK) {
+    return getStoredUser()
+  }
+
+  const token = getToken()
+
+  if (!token || isTokenExpired(token)) {
+    clearSession()
+    return null
+  }
 
   const res = await apiFetch<UserResponse>('/api/users/me')
   return mapUserResponse(res)
 }
 
-export async function updateProfile(patch: Partial<User>): Promise<User> {
+export async function updateProfile(
+  patch: Partial<User>,
+): Promise<User> {
   if (USE_MOCK) {
     const current = getStoredUser() ?? mockUser
-    const updated = { ...current, ...patch }
-    persistSession(getToken() ?? 'mock-token', getRefreshToken() ?? undefined, updated)
+    const updated = {
+      ...current,
+      ...patch,
+    }
+
+    persistSession(
+      getToken() ?? 'mock-token',
+      getRefreshToken() ?? undefined,
+      updated,
+    )
+
     return mockDelay(updated, 300)
   }
 
+  const nickname = patch.nickname?.trim()
+
+  if (!nickname) {
+    throw new Error('닉네임을 입력해 주세요.')
+  }
+
   const res = await apiFetch<UserResponse>(
-    `/api/users/me?nickname=${encodeURIComponent(patch.nickname ?? '')}`,
+    `/api/users/me?nickname=${encodeURIComponent(nickname)}`,
     {
       method: 'PATCH',
     },
   )
 
   const user = mapUserResponse(res)
-    persistSession(getToken() ?? '', getRefreshToken() ?? undefined, user)
 
-    return user
+  persistSession(
+    getToken() ?? '',
+    getRefreshToken() ?? undefined,
+    user,
+  )
+
+  return user
+}
+
+export async function logout(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return
   }
 
-  export async function logout() {
-    if (typeof window === 'undefined') return
+  const token = getToken()
 
-    const token = getToken()
-
-    try {
+  try {
+    if (!USE_MOCK && token && !isTokenExpired(token)) {
       await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
       })
-    } catch {
-     
-    } finally {
-      window.localStorage.removeItem(TOKEN_KEY)
-      window.localStorage.removeItem(REFRESH_TOKEN_KEY)
-      window.localStorage.removeItem(USER_KEY)
     }
+  } catch {
+
+  } finally {
+    clearSession()
+  }
 }
 
-export function persistSession(token: string, refreshToken?: string, user?: User) {
-  if (typeof window === 'undefined') return
+export function persistSession(
+  token: string,
+  refreshToken?: string,
+  user?: User,
+): void {
+  if (typeof window === 'undefined') {
+    return
+  }
 
   window.localStorage.setItem(TOKEN_KEY, token)
 
   if (refreshToken) {
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    window.localStorage.setItem(
+      REFRESH_TOKEN_KEY,
+      refreshToken,
+    )
   }
 
   if (user) {
@@ -138,21 +252,60 @@ export function persistSession(token: string, refreshToken?: string, user?: User
 }
 
 export function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(TOKEN_KEY)
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const token = window.localStorage.getItem(TOKEN_KEY)
+
+  if (!token) {
+    return null
+  }
+
+  if (isTokenExpired(token)) {
+    clearSession()
+    return null
+  }
+
+  return token
 }
 
 export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined') {
+    return null
+  }
+
   return window.localStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
 export function getStoredUser(): User | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const token = window.localStorage.getItem(TOKEN_KEY)
+
+  if (!token || isTokenExpired(token)) {
+    clearSession()
+    return null
+  }
+
   const raw = window.localStorage.getItem(USER_KEY)
-  return raw ? (JSON.parse(raw) as User) : null
+
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw) as User
+  } catch {
+    clearSession()
+    return null
+  }
 }
 
 export function isLoggedIn(): boolean {
-  return getToken() !== null
+  const token = getToken()
+
+  return token !== null
 }
