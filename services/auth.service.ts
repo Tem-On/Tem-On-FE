@@ -68,7 +68,9 @@ function parseJwtPayload(token: string): JwtPayload | null {
       Array.from(atob(paddedPayload))
         .map(
           (character) =>
-            `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`,
+            `%${character.charCodeAt(0)
+              .toString(16)
+              .padStart(2, '0')}`,
         )
         .join(''),
     )
@@ -137,7 +139,11 @@ export async function loginWithKakao(code?: string): Promise<User> {
       throw new Error('사용자 정보를 가져오지 못했습니다.')
     }
 
-    persistSession(tokenRes.accessToken, tokenRes.refreshToken, user)
+    persistSession(
+      tokenRes.accessToken,
+      tokenRes.refreshToken,
+      user,
+    )
 
     return user
   } catch (error) {
@@ -159,6 +165,7 @@ export async function fetchMe(): Promise<User | null> {
   }
 
   const res = await apiFetch<UserResponse>('/api/users/me')
+
   return mapUserResponse(res)
 }
 
@@ -167,6 +174,7 @@ export async function updateProfile(
 ): Promise<User> {
   if (USE_MOCK) {
     const current = getStoredUser() ?? mockUser
+
     const updated = {
       ...current,
       ...patch,
@@ -205,6 +213,26 @@ export async function updateProfile(
   return user
 }
 
+/**
+ * 현재 로그인한 회원 탈퇴
+ *
+ * 백엔드:
+ * DELETE /api/users/me
+ */
+export async function withdraw(): Promise<void> {
+  if (USE_MOCK) {
+    await mockDelay(undefined, 300)
+    clearSession()
+    return
+  }
+
+  await apiFetch<void>('/api/users/me', {
+    method: 'DELETE',
+  })
+
+  clearSession()
+}
+
 export async function logout(): Promise<void> {
   if (typeof window === 'undefined') {
     return
@@ -222,7 +250,8 @@ export async function logout(): Promise<void> {
       })
     }
   } catch {
-
+    // 백엔드 로그아웃 요청이 실패하더라도
+    // 프론트엔드 세션은 제거합니다.
   } finally {
     clearSession()
   }
@@ -247,7 +276,10 @@ export function persistSession(
   }
 
   if (user) {
-    window.localStorage.setItem(USER_KEY, JSON.stringify(user))
+    window.localStorage.setItem(
+      USER_KEY,
+      JSON.stringify(user),
+    )
   }
 }
 
