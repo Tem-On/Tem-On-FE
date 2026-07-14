@@ -1,5 +1,14 @@
-import type { Order, OrderItem } from '@/types'
-import { apiFetch, mockDelay, USE_MOCK } from './api-client'
+import type {
+  Order,
+  OrderItem,
+  Payment,
+  PaymentMethod,
+} from '@/types'
+import {
+  apiFetch,
+  mockDelay,
+  USE_MOCK,
+} from './api-client'
 import { mockOrders } from './mock-data'
 
 export interface CreateOrderPayload {
@@ -26,21 +35,42 @@ interface BackendOrderResponse {
   items: BackendOrderItemResponse[]
 }
 
-function mapOrderStatus(status: string): Order['status'] {
+interface PaymentRequestPayload {
+  orderId: number
+  method: PaymentMethod
+}
+
+function mapOrderStatus(
+  status: string,
+): Order['status'] {
   switch (status) {
     case 'CREATED':
       return 'PENDING'
+
     case 'PAID':
       return 'PAID'
+
+    case 'PREPARING':
+      return 'PREPARING'
+
+    case 'SHIPPED':
+      return 'SHIPPED'
+
+    case 'DELIVERED':
+      return 'DELIVERED'
+
     case 'CANCELED':
     case 'CANCELLED':
       return 'CANCELLED'
+
     default:
       return 'PENDING'
   }
 }
 
-function mapBackendOrderItem(item: BackendOrderItemResponse): OrderItem {
+function mapBackendOrderItem(
+  item: BackendOrderItemResponse,
+): OrderItem {
   return {
     eventProductId: String(item.eventProductId),
     name: item.productName,
@@ -50,12 +80,15 @@ function mapBackendOrderItem(item: BackendOrderItemResponse): OrderItem {
   }
 }
 
-function mapBackendOrder(order: BackendOrderResponse): Order {
+function mapBackendOrder(
+  order: BackendOrderResponse,
+): Order {
   return {
     id: String(order.orderId),
     orderNumber: order.orderNumber,
     userId: String(order.userId),
-    items: order.items?.map(mapBackendOrderItem) ?? [],
+    items:
+      order.items?.map(mapBackendOrderItem) ?? [],
     totalAmount: order.totalAmount,
     status: mapOrderStatus(order.status),
     createdAt: order.orderedAt,
@@ -66,7 +99,8 @@ export async function createOrder(
   payload: CreateOrderPayload,
 ): Promise<Order> {
   const totalAmount = payload.items.reduce(
-    (sum, i) => sum + i.eventPrice * i.quantity,
+    (sum, item) =>
+      sum + item.eventPrice * item.quantity,
     0,
   )
 
@@ -76,7 +110,9 @@ export async function createOrder(
       orderNumber: `TEMON-${new Date()
         .toISOString()
         .slice(0, 10)
-        .replace(/-/g, '')}-${Math.floor(Math.random() * 9000 + 1000)}`,
+        .replace(/-/g, '')}-${Math.floor(
+        Math.random() * 9000 + 1000,
+      )}`,
       userId: 'u_1',
       items: payload.items,
       totalAmount,
@@ -87,59 +123,200 @@ export async function createOrder(
     return mockDelay(order, 500)
   }
 
-  const res = await apiFetch<BackendOrderResponse>('/api/orders', {
-    method: 'POST',
-    body: {
-      items: payload.items.map((item) => ({
-        eventProductId: Number(item.eventProductId),
-        quantity: item.quantity,
-      })),
-    },
-  })
+  const res =
+    await apiFetch<BackendOrderResponse>(
+      '/api/orders',
+      {
+        method: 'POST',
+        body: {
+          items: payload.items.map((item) => ({
+            eventProductId: Number(
+              item.eventProductId,
+            ),
+            quantity: item.quantity,
+          })),
+        },
+      },
+    )
 
   return mapBackendOrder(res)
 }
 
-export async function payOrder(orderId: string): Promise<Order> {
+/**
+ * 결제 요청 생성
+ *
+ * POST /api/payments
+ *
+ * body:
+ * {
+ *   orderId: number,
+ *   method: 'CARD' | 'KAKAO_PAY' | 'NAVER_PAY'
+ * }
+ */
+export async function requestPayment(
+  orderId: string,
+  method: PaymentMethod,
+): Promise<Payment> {
   if (USE_MOCK) {
-    const base = mockOrders[0]
+    const payment: Payment = {
+      paymentId: Date.now(),
+      paymentNumber: crypto.randomUUID(),
+      orderId: Number(orderId),
+      amount: mockOrders[0]?.totalAmount ?? 0,
+      method,
+      status: 'READY',
+    }
 
-    return mockDelay(
-      {
-        ...base,
-        id: orderId,
-        status: 'PAID',
-        paidAt: new Date().toISOString(),
-      },
-      800,
-    )
+    return mockDelay(payment, 500)
   }
 
-  const res = await apiFetch<BackendOrderResponse>(
-    `/api/payments/success?orderId=${orderId}`,
+  const payload: PaymentRequestPayload = {
+    orderId: Number(orderId),
+    method,
+  }
+
+  return apiFetch<Payment>('/api/payments', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+/**
+ * 결제 성공 처리
+ *
+ * POST /api/payments/{paymentId}/success
+ */
+export async function successPayment(
+  paymentId: number,
+): Promise<Payment> {
+  if (USE_MOCK) {
+    const payment: Payment = {
+      paymentId,
+      paymentNumber: crypto.randomUUID(),
+      orderId: 1,
+      amount: mockOrders[0]?.totalAmount ?? 0,
+      method: 'KAKAO_PAY',
+      status: 'PAID',
+    }
+
+    return mockDelay(payment, 500)
+  }
+
+  return apiFetch<Payment>(
+    `/api/payments/${paymentId}/success`,
     {
       method: 'POST',
     },
   )
-
-  return mapBackendOrder(res)
 }
 
-export async function getMyOrders(): Promise<Order[]> {
-  if (USE_MOCK) return mockDelay(mockOrders)
+/**
+ * 결제 실패 처리
+ *
+ * POST /api/payments/{paymentId}/fail
+ */
+export async function failPayment(
+  paymentId: number,
+): Promise<Payment> {
+  if (USE_MOCK) {
+    const payment: Payment = {
+      paymentId,
+      paymentNumber: crypto.randomUUID(),
+      orderId: 1,
+      amount: mockOrders[0]?.totalAmount ?? 0,
+      method: 'KAKAO_PAY',
+      status: 'FAILED',
+    }
 
-  const res = await apiFetch<BackendOrderResponse[]>('/api/orders/me')
+    return mockDelay(payment, 500)
+  }
+
+  return apiFetch<Payment>(
+    `/api/payments/${paymentId}/fail`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+/**
+ * 결제 취소 처리
+ *
+ * POST /api/payments/{paymentId}/cancel
+ */
+export async function cancelPayment(
+  paymentId: number,
+): Promise<Payment> {
+  if (USE_MOCK) {
+    const payment: Payment = {
+      paymentId,
+      paymentNumber: crypto.randomUUID(),
+      orderId: 1,
+      amount: mockOrders[0]?.totalAmount ?? 0,
+      method: 'KAKAO_PAY',
+      status: 'CANCELED',
+    }
+
+    return mockDelay(payment, 500)
+  }
+
+  return apiFetch<Payment>(
+    `/api/payments/${paymentId}/cancel`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+/**
+ * 현재 프로젝트용 임시 결제 처리
+ *
+ * 1. 결제 요청 생성
+ * 2. 반환받은 paymentId로 바로 성공 처리
+ */
+export async function payOrder(
+  orderId: string,
+  method: PaymentMethod,
+): Promise<Payment> {
+  const payment = await requestPayment(
+    orderId,
+    method,
+  )
+
+  return successPayment(payment.paymentId)
+}
+
+export async function getMyOrders(): Promise<
+  Order[]
+> {
+  if (USE_MOCK) {
+    return mockDelay(mockOrders)
+  }
+
+  const res =
+    await apiFetch<BackendOrderResponse[]>(
+      '/api/orders/me',
+    )
 
   return res.map(mapBackendOrder)
 }
 
-export async function getOrder(orderId: string): Promise<Order> {
+export async function getOrder(
+  orderId: string,
+): Promise<Order> {
   if (USE_MOCK) {
-    const order = mockOrders.find((o) => o.id === orderId) ?? mockOrders[0]
+    const order =
+      mockOrders.find(
+        (item) => item.id === orderId,
+      ) ?? mockOrders[0]
+
     return mockDelay(order)
   }
 
-  const res = await apiFetch<BackendOrderResponse>(`/api/orders/${orderId}`)
+  const res =
+    await apiFetch<BackendOrderResponse>(
+      `/api/orders/${orderId}`,
+    )
 
   return mapBackendOrder(res)
 }

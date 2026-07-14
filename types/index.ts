@@ -19,6 +19,17 @@ export type OrderStatus =
   | 'DELIVERED'
   | 'CANCELLED'
 
+export type PaymentMethod =
+  | 'CARD'
+  | 'KAKAO_PAY'
+  | 'NAVER_PAY'
+
+export type PaymentStatus =
+  | 'READY'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELED'
+
 export type QueueStatus =
   | 'WAITING'
   | 'READY'
@@ -123,6 +134,15 @@ export interface Order {
   status: OrderStatus
   createdAt: string
   paidAt?: string
+}
+
+export interface Payment {
+  paymentId: number
+  paymentNumber: string
+  orderId: number
+  amount: number
+  method: PaymentMethod
+  status: PaymentStatus
 }
 
 // ---------- 관리자 ----------
