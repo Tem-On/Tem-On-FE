@@ -36,10 +36,18 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
-    getDashboardStats().then(setStats)
-    getRevenueSeries().then(setRevenue)
-    getAdminOrders().then((o) => setOrders(o.slice(0, 5)))
-  }, [])
+
+  getDashboardStats().then(setStats).catch(err => console.error("Stats 에러:", err))
+
+  getRevenueSeries().then(setRevenue).catch(err => console.error("Revenue 에러:", err))
+
+  getAdminOrders()
+    .then((o: any) => {
+      const orderList = Array.isArray(o) ? o : (o?.content || []);
+      setOrders(orderList.slice(0, 5));
+    })
+    .catch(err => console.error("Orders 에러:", err));
+}, [])
 
   return (
     <>
