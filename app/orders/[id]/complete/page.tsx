@@ -21,7 +21,11 @@ export default function OrderCompletePage() {
 
   useEffect(() => {
     getOrder(params.id).then((o) =>
-      setOrder({ ...o, status: 'PAID', paidAt: o.paidAt ?? new Date().toISOString() }),
+      setOrder({
+        ...o,
+        status: 'PAID',
+        paidAt: o.paidAt ?? new Date().toISOString(),
+      }),
     )
   }, [params.id])
 
@@ -32,9 +36,13 @@ export default function OrderCompletePage() {
           <span className="flex size-16 items-center justify-center rounded-full bg-success/15 text-success">
             <CheckCircle2 className="size-9" />
           </span>
+
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold">결제가 완료되었습니다</h1>
-            <p className="text-sm text-muted-foreground text-pretty">
+            <h1 className="text-2xl font-bold">
+              결제가 완료되었습니다
+            </h1>
+
+            <p className="text-pretty text-sm text-muted-foreground">
               선착순 구매에 성공했어요! 주문 내역을 확인해보세요.
             </p>
           </div>
@@ -50,6 +58,7 @@ export default function OrderCompletePage() {
                   <Receipt className="size-4" />
                   {order.orderNumber}
                 </div>
+
                 <OrderStatusBadge status={order.status} />
               </div>
 
@@ -69,14 +78,21 @@ export default function OrderCompletePage() {
                       className="object-cover"
                     />
                   </div>
+
                   <div className="flex flex-1 flex-col">
-                    <span className="font-medium">{item.name}</span>
+                    <span className="font-medium">
+                      {item.name}
+                    </span>
+
                     <span className="text-sm text-muted-foreground">
                       수량 {item.quantity}개
                     </span>
                   </div>
+
                   <span className="font-semibold">
-                    {formatKRW(item.eventPrice * item.quantity)}
+                    {formatKRW(
+                      item.eventPrice * item.quantity,
+                    )}
                   </span>
                 </div>
               ))}
@@ -85,13 +101,22 @@ export default function OrderCompletePage() {
 
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">결제일시</span>
+                  <span className="text-muted-foreground">
+                    결제일시
+                  </span>
+
                   <span>
-                    {order.paidAt ? formatDateTime(order.paidAt) : '-'}
+                    {order.paidAt
+                      ? formatDateTime(order.paidAt)
+                      : '-'}
                   </span>
                 </div>
+
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">총 결제금액</span>
+                  <span className="font-semibold">
+                    총 결제금액
+                  </span>
+
                   <span className="text-lg font-bold text-primary">
                     {formatKRW(order.totalAmount)}
                   </span>
@@ -101,7 +126,15 @@ export default function OrderCompletePage() {
           </Card>
         )}
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-8 flex flex-col gap-3">
+          <Button
+            className="w-full"
+            nativeButton={false}
+            render={<Link href="/events" />}
+          >
+            계속 쇼핑하기
+          </Button>
+
           <Button
             variant="outline"
             className="w-full"
@@ -110,13 +143,6 @@ export default function OrderCompletePage() {
           >
             <Package data-icon="inline-start" />
             주문 내역 보기
-          </Button>
-          <Button
-            className="w-full"
-            nativeButton={false}
-            render={<Link href="/events" />}
-          >
-            계속 쇼핑하기
           </Button>
         </div>
       </div>
