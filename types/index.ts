@@ -2,7 +2,10 @@
 // Tem-On 공통 도메인 타입
 // ============================================================
 
-export type EventStatus = 'OPEN' | 'UPCOMING' | 'CLOSED'
+export type EventStatus =
+  | 'OPEN'
+  | 'UPCOMING'
+  | 'CLOSED'
 
 export type EventProductStatus =
   | 'READY'
@@ -46,6 +49,10 @@ export type QueueRealtimeType =
   | 'COMPLETE'
   | 'RESET'
 
+// ============================================================
+// 사용자
+// ============================================================
+
 export interface User {
   id: string
   nickname: string
@@ -56,6 +63,10 @@ export interface User {
   createdAt: string
 }
 
+// ============================================================
+// 상품
+// ============================================================
+
 export interface Product {
   id: string
   name: string
@@ -65,6 +76,10 @@ export interface Product {
   category: string
   createdAt: string
 }
+
+// ============================================================
+// 이벤트
+// ============================================================
 
 export interface EventSummary {
   id: string
@@ -107,6 +122,10 @@ export interface EventDetail {
   products: EventProduct[]
 }
 
+// ============================================================
+// 대기열
+// ============================================================
+
 export interface QueueState {
   eventId: string
   eventProductId?: string
@@ -116,6 +135,10 @@ export interface QueueState {
   canEnter: boolean
   status: QueueStatus
 }
+
+// ============================================================
+// 주문 및 결제
+// ============================================================
 
 export interface OrderItem {
   eventProductId: string
@@ -147,7 +170,9 @@ export interface Payment {
   status: PaymentStatus
 }
 
-// ---------- 관리자 ----------
+// ============================================================
+// 관리자
+// ============================================================
 
 export interface DashboardStats {
   totalOrders: number
@@ -182,22 +207,55 @@ export interface QueueAdminRow {
   gateStatus: QueueGateStatus
 }
 
+// ============================================================
+// 모니터링
+// ============================================================
+
+export type SystemMetricStatus =
+  | 'healthy'
+  | 'warning'
+  | 'critical'
+
 export interface SystemMetric {
   label: string
-  value: number
+
+  /**
+   * 백엔드 SystemMetricResponse에서 String으로 내려옵니다.
+   *
+   * 예:
+   * "15.3"
+   * "42.7"
+   * "1"
+   */
+  value: string
+
+  /**
+   * 예:
+   * "%"
+   * "개"
+   * "명"
+   */
   unit: string
-  status: 'healthy' | 'warning' | 'critical'
+
+  status: SystemMetricStatus
 }
+
+export type LogLevel =
+  | 'INFO'
+  | 'WARN'
+  | 'ERROR'
 
 export interface LogEntry {
   id: string
   timestamp: string
-  level: 'INFO' | 'WARN' | 'ERROR'
+  level: LogLevel
   source: string
   message: string
 }
 
-// ---------- 실시간 이벤트 페이로드 ----------
+// ============================================================
+// 실시간 이벤트 페이로드
+// ============================================================
 
 export interface StockUpdateMessage {
   eventProductId: string
