@@ -14,6 +14,33 @@ export type EventProductStatus =
   | 'HIDDEN'
   | 'DELETED'
 
+export type ProductStatus =
+  | 'ACTIVE'
+  | 'SOLD_OUT'
+  | 'HIDDEN'
+  | 'DELETED'
+
+export type ProductCategory =
+  | 'FASHION'
+  | 'SHOES'
+  | 'BAG'
+  | 'ACCESSORY'
+  | 'ELECTRONIC'
+  | 'DIGITAL_DEVICE'
+  | 'HOME_APPLIANCE'
+  | 'BEAUTY'
+  | 'FOOD'
+  | 'LIVING'
+  | 'SPORTS'
+  | 'TOY'
+  | 'BOOK'
+  | 'PET'
+  | 'BABY'
+  | 'HEALTH'
+  | 'INTERIOR'
+  | 'LIFESTYLE'
+  | 'ETC'
+
 export type OrderStatus =
   | 'PENDING'
   | 'PAID'
@@ -73,8 +100,34 @@ export interface Product {
   description: string
   image: string
   price: number
-  category: string
+  category: ProductCategory
+  status: ProductStatus
   createdAt: string
+  updatedAt?: string
+}
+
+export interface AdminProductApiResponse {
+  id: number
+  name: string
+  description: string | null
+  price: number
+  imageUrl: string | null
+  category: ProductCategory
+  status: ProductStatus
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+  numberOfElements: number
+  first: boolean
+  last: boolean
+  empty: boolean
 }
 
 // ============================================================
@@ -218,25 +271,8 @@ export type SystemMetricStatus =
 
 export interface SystemMetric {
   label: string
-
-  /**
-   * 백엔드 SystemMetricResponse에서 String으로 내려옵니다.
-   *
-   * 예:
-   * "15.3"
-   * "42.7"
-   * "1"
-   */
   value: string
-
-  /**
-   * 예:
-   * "%"
-   * "개"
-   * "명"
-   */
   unit: string
-
   status: SystemMetricStatus
 }
 

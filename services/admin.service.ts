@@ -1,10 +1,14 @@
 import type {
+  AdminProductApiResponse,
   DashboardStats,
   EventProduct,
   EventSummary,
   LogEntry,
   Order,
+  PageResponse,
   Product,
+  ProductCategory,
+  ProductStatus,
   QueueAdminRow,
   RevenuePoint,
   StockRow,
@@ -23,7 +27,39 @@ import {
   mockSystemMetrics,
 } from './mock-data'
 
-// -------- 대시보드 --------
+// ============================================================
+// 상품 응답 변환
+// ============================================================
+
+function convertProduct(
+  product: AdminProductApiResponse,
+): Product {
+  return {
+    id: String(product.id),
+    name: product.name,
+    description: product.description ?? '',
+    image: product.imageUrl ?? '/placeholder.svg',
+    price: product.price,
+    category: product.category,
+    status: product.status,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt ?? undefined,
+  }
+}
+
+export interface ProductPageResult {
+  products: Product[]
+  page: number
+  size: number
+  totalPages: number
+  totalElements: number
+  first: boolean
+  last: boolean
+}
+
+// ============================================================
+// 대시보드
+// ============================================================
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   if (USE_MOCK) {
@@ -32,30 +68,96 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       totalRevenue: 218400000,
       paidCount: 1204,
       cancelledCount: 154,
-      activeEvents: mockEvents.filter((e) => e.status === 'OPEN').length,
+      activeEvents: mockEvents.filter(
+        (event) => event.status === 'OPEN',
+      ).length,
       soldQuantity: 4820,
     })
   }
 
-  return apiFetch<DashboardStats>('/api/admin/dashboard/stats')
+  return apiFetch<DashboardStats>(
+    '/api/admin/dashboard/stats',
+  )
 }
 
-export async function getRevenueSeries(): Promise<RevenuePoint[]> {
+export async function getRevenueSeries(): Promise<
+  RevenuePoint[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockRevenue)
   }
 
-  return apiFetch<RevenuePoint[]>('/api/admin/dashboard/revenue')
+  return apiFetch<RevenuePoint[]>(
+    '/api/admin/dashboard/revenue',
+  )
 }
 
-// -------- 상품 관리 --------
+// ============================================================
+// 상품 관리
+// ============================================================
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(
+  page = 0,
+  size = 10,
+): Promise<ProductPageResult> {
   if (USE_MOCK) {
-    return mockDelay(mockProducts)
+    const convertedProducts: Product[] = mockProducts.map(
+      (product) => ({
+        ...product,
+        category:
+          product.category as ProductCategory,
+        status:
+          'status' in product
+            ? (product.status as ProductStatus)
+            : 'ACTIVE',
+      }),
+    )
+
+    const start = page * size
+    const end = start + size
+    const content = convertedProducts.slice(start, end)
+    const totalElements = convertedProducts.length
+    const totalPages = Math.ceil(totalElements / size)
+
+    return mockDelay({
+      products: content,
+      page,
+      size,
+      totalPages,
+      totalElements,
+      first: page === 0,
+      last:
+        totalPages === 0 ||
+        page >= totalPages - 1,
+    })
   }
 
-  return apiFetch<Product[]>('/api/admin/products')
+  const response = await apiFetch<
+    PageResponse<AdminProductApiResponse>
+  >(
+    `/api/admin/products?page=${page}&size=${size}`,
+  )
+
+  return {
+    products: response.content.map(convertProduct),
+    page: response.number,
+    size: response.size,
+    totalPages: response.totalPages,
+    totalElements: response.totalElements,
+    first: response.first,
+    last: response.last,
+  }
+}
+
+export async function getAdminProduct(
+  id: string,
+): Promise<Product> {
+  const response =
+    await apiFetch<AdminProductApiResponse>(
+      `/api/admin/products/${id}`,
+    )
+
+  return convertProduct(response)
 }
 
 export async function saveProduct(
@@ -66,43 +168,75 @@ export async function saveProduct(
       id: product.id ?? `p_${Date.now()}`,
       name: product.name ?? '',
       description: product.description ?? '',
-      image: product.image ?? '/images/products/mug.png',
+      image: product.image ?? '/placeholder.svg',
       price: product.price ?? 0,
-      category: product.category ?? '기타',
-      createdAt: product.createdAt ?? new Date().toISOString(),
+      category: product.category ?? 'ETC',
+      status: product.status ?? 'ACTIVE',
+      createdAt:
+        product.createdAt ??
+        new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
   }
 
-  const method = product.id ? 'PATCH' : 'POST'
+  const isUpdate = Boolean(product.id)
 
-  const path = product.id
+  const path = isUpdate
     ? `/api/admin/products/${product.id}`
     : '/api/admin/products'
 
-  return apiFetch<Product>(path, {
-    method,
-    body: product,
-  })
+  const response =
+    await apiFetch<AdminProductApiResponse>(
+      path,
+      {
+        method: isUpdate ? 'PATCH' : 'POST',
+        body: {
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          imageUrl: product.image,
+          category: product.category,
+          ...(isUpdate
+            ? {
+                status: product.status,
+              }
+            : {}),
+        },
+      },
+    )
+
+  return convertProduct(response)
 }
 
-export async function deleteProduct(id: string): Promise<void> {
+export async function deleteProduct(
+  id: string,
+): Promise<void> {
   if (USE_MOCK) {
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/products/${id}`, {
-    method: 'DELETE',
-  })
+  await apiFetch<void>(
+    `/api/admin/products/${id}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
-// -------- 이벤트 관리 --------
+// ============================================================
+// 이벤트 관리
+// ============================================================
 
-export async function getAdminEvents(): Promise<EventSummary[]> {
+export async function getAdminEvents(): Promise<
+  EventSummary[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockEvents)
   }
 
-  return apiFetch<EventSummary[]>('/api/admin/events')
+  return apiFetch<EventSummary[]>(
+    '/api/admin/events',
+  )
 }
 
 export async function saveEvent(
@@ -113,44 +247,59 @@ export async function saveEvent(
       id: event.id ?? `e_${Date.now()}`,
       title: event.title ?? '',
       description: event.description ?? '',
-      image: event.image ?? '/images/events/tech-friday.png',
+      image:
+        event.image ??
+        '/images/events/tech-friday.png',
       status: event.status ?? 'UPCOMING',
-      startAt: event.startAt ?? new Date().toISOString(),
-      endAt: event.endAt ?? new Date().toISOString(),
+      startAt:
+        event.startAt ??
+        new Date().toISOString(),
+      endAt:
+        event.endAt ??
+        new Date().toISOString(),
       productCount: event.productCount ?? 0,
     })
   }
-
-  const method = event.id ? 'PATCH' : 'POST'
 
   const path = event.id
     ? `/api/admin/events/${event.id}`
     : '/api/admin/events'
 
   return apiFetch<EventSummary>(path, {
-    method,
+    method: event.id ? 'PATCH' : 'POST',
     body: event,
   })
 }
 
-export async function deleteEvent(id: string): Promise<void> {
+export async function deleteEvent(
+  id: string,
+): Promise<void> {
   if (USE_MOCK) {
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/events/${id}`, {
-    method: 'DELETE',
-  })
+  await apiFetch<void>(
+    `/api/admin/events/${id}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
-// -------- 이벤트 상품 관리 --------
+// ============================================================
+// 이벤트 상품 관리
+// ============================================================
 
-export async function getAdminEventProducts(): Promise<EventProduct[]> {
+export async function getAdminEventProducts(): Promise<
+  EventProduct[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockEventProducts)
   }
 
-  return apiFetch<EventProduct[]>('/api/admin/event-products')
+  return apiFetch<EventProduct[]>(
+    '/api/admin/event-products',
+  )
 }
 
 export async function saveEventProduct(
@@ -158,43 +307,51 @@ export async function saveEventProduct(
 ): Promise<EventProduct> {
   if (USE_MOCK) {
     const existingIndex = ep.id
-      ? mockEventProducts.findIndex((x) => x.id === ep.id)
+      ? mockEventProducts.findIndex(
+          (item) => item.id === ep.id,
+        )
       : -1
 
     if (existingIndex >= 0) {
-      const prev = mockEventProducts[existingIndex]
-      const total = ep.totalStock ?? prev.totalStock
-      const soldAndReserved = prev.soldCount + prev.reservedStock
+      const previous =
+        mockEventProducts[existingIndex]
+
+      const totalStock =
+        ep.totalStock ?? previous.totalStock
+
+      const soldAndReserved =
+        previous.soldCount +
+        previous.reservedStock
 
       const updated: EventProduct = {
-        ...prev,
+        ...previous,
         ...ep,
-        totalStock: total,
-        remainingStock: Math.max(0, total - soldAndReserved),
-
-        // Partial<EventProduct>의 description은 undefined일 수 있으므로
-        // 기존 값 또는 빈 문자열로 보장
+        totalStock,
+        remainingStock: Math.max(
+          0,
+          totalStock - soldAndReserved,
+        ),
         description:
           ep.description ??
-          prev.description ??
+          previous.description ??
           '',
-
         category:
           ep.category ??
-          prev.category ??
+          previous.category ??
           '기타',
       }
 
-      mockEventProducts[existingIndex] = updated
+      mockEventProducts[existingIndex] =
+        updated
 
       return mockDelay(updated)
     }
 
     const product = mockProducts.find(
-      (p) => p.id === ep.productId,
+      (item) => item.id === ep.productId,
     )
 
-    const total = ep.totalStock ?? 0
+    const totalStock = ep.totalStock ?? 0
 
     const created: EventProduct = {
       id: ep.id ?? `ep_${Date.now()}`,
@@ -211,19 +368,15 @@ export async function saveEventProduct(
         0,
       eventPrice: ep.eventPrice ?? 0,
       purchaseLimit: ep.purchaseLimit,
-      totalStock: total,
-      remainingStock: total,
+      totalStock,
+      remainingStock: totalStock,
       reservedStock: 0,
       soldCount: 0,
       status: ep.status ?? 'READY',
-
-      // 둘 다 undefined일 수 있으므로 마지막에 빈 문자열 추가
       description:
         product?.description ??
         ep.description ??
         '',
-
-      // category도 EventProduct에서 필수 string이므로 기본값 필요
       category:
         product?.category ??
         ep.category ??
@@ -232,62 +385,48 @@ export async function saveEventProduct(
 
     mockEventProducts.push(created)
 
-    const event = mockEvents.find(
-      (e) => e.id === created.eventId,
-    )
-
-    if (event) {
-      event.productCount = mockEventProducts.filter(
-        (x) => x.eventId === event.id,
-      ).length
-    }
-
     return mockDelay(created)
   }
-
-  const method = ep.id ? 'PATCH' : 'POST'
 
   const path = ep.id
     ? `/api/admin/event-products/${ep.id}`
     : '/api/admin/event-products'
 
   return apiFetch<EventProduct>(path, {
-    method,
+    method: ep.id ? 'PATCH' : 'POST',
     body: ep,
   })
 }
 
-export async function deleteEventProduct(id: string): Promise<void> {
+export async function deleteEventProduct(
+  id: string,
+): Promise<void> {
   if (USE_MOCK) {
-    const index = mockEventProducts.findIndex((x) => x.id === id)
-
-    if (index >= 0) {
-      const [removed] = mockEventProducts.splice(index, 1)
-      const event = mockEvents.find((e) => e.id === removed.eventId)
-
-      if (event) {
-        event.productCount = mockEventProducts.filter(
-          (x) => x.eventId === event.id,
-        ).length
-      }
-    }
-
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/event-products/${id}`, {
-    method: 'DELETE',
-  })
+  await apiFetch<void>(
+    `/api/admin/event-products/${id}`,
+    {
+      method: 'DELETE',
+    },
+  )
 }
 
-// -------- 재고 관리 --------
+// ============================================================
+// 재고 관리
+// ============================================================
 
-export async function getStockRows(): Promise<StockRow[]> {
+export async function getStockRows(): Promise<
+  StockRow[]
+> {
   if (USE_MOCK) {
     return mockDelay(buildStockRows())
   }
 
-  return apiFetch<StockRow[]>('/api/admin/stocks')
+  return apiFetch<StockRow[]>(
+    '/api/admin/stocks',
+  )
 }
 
 export async function updateStock(
@@ -298,22 +437,31 @@ export async function updateStock(
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/stocks/${eventProductId}`, {
-    method: 'PATCH',
-    body: {
-      totalStock,
+  await apiFetch<void>(
+    `/api/admin/stocks/${eventProductId}`,
+    {
+      method: 'PATCH',
+      body: {
+        totalStock,
+      },
     },
-  })
+  )
 }
 
-// -------- 주문 관리 --------
+// ============================================================
+// 주문 관리
+// ============================================================
 
-export async function getAdminOrders(): Promise<Order[]> {
+export async function getAdminOrders(): Promise<
+  Order[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockOrders)
   }
 
-  return apiFetch<Order[]>('/api/admin/orders')
+  return apiFetch<Order[]>(
+    '/api/admin/orders',
+  )
 }
 
 export async function updateOrderStatus(
@@ -322,7 +470,9 @@ export async function updateOrderStatus(
 ): Promise<Order> {
   if (USE_MOCK) {
     const order =
-      mockOrders.find((o) => o.id === orderId) ?? mockOrders[0]
+      mockOrders.find(
+        (item) => item.id === orderId,
+      ) ?? mockOrders[0]
 
     return mockDelay({
       ...order,
@@ -330,22 +480,31 @@ export async function updateOrderStatus(
     })
   }
 
-  return apiFetch<Order>(`/api/admin/orders/${orderId}/status`, {
-    method: 'PATCH',
-    body: {
-      status,
+  return apiFetch<Order>(
+    `/api/admin/orders/${orderId}/status`,
+    {
+      method: 'PATCH',
+      body: {
+        status,
+      },
     },
-  })
+  )
 }
 
-// -------- 대기열 관리 --------
+// ============================================================
+// 대기열 관리
+// ============================================================
 
-export async function getQueueAdminRows(): Promise<QueueAdminRow[]> {
+export async function getQueueAdminRows(): Promise<
+  QueueAdminRow[]
+> {
   if (USE_MOCK) {
     return mockDelay(buildQueueRows())
   }
 
-  return apiFetch<QueueAdminRow[]>('/api/admin/queues')
+  return apiFetch<QueueAdminRow[]>(
+    '/api/admin/queues',
+  )
 }
 
 export async function setQueueGate(
@@ -356,38 +515,56 @@ export async function setQueueGate(
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/queues/${eventId}/gate`, {
-    method: 'PATCH',
-    body: {
-      gateStatus,
+  await apiFetch<void>(
+    `/api/admin/queues/${eventId}/gate`,
+    {
+      method: 'PATCH',
+      body: {
+        gateStatus,
+      },
     },
-  })
+  )
 }
 
-export async function resetQueue(eventId: string): Promise<void> {
+export async function resetQueue(
+  eventId: string,
+): Promise<void> {
   if (USE_MOCK) {
     return mockDelay(undefined, 300)
   }
 
-  return apiFetch<void>(`/api/admin/queues/${eventId}/reset`, {
-    method: 'POST',
-  })
+  await apiFetch<void>(
+    `/api/admin/queues/${eventId}/reset`,
+    {
+      method: 'POST',
+    },
+  )
 }
 
-// -------- 모니터링 --------
+// ============================================================
+// 모니터링
+// ============================================================
 
-export async function getSystemMetrics(): Promise<SystemMetric[]> {
+export async function getSystemMetrics(): Promise<
+  SystemMetric[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockSystemMetrics)
   }
 
-  return apiFetch<SystemMetric[]>('/api/monitoring/metrics')
+  return apiFetch<SystemMetric[]>(
+    '/api/monitoring/metrics',
+  )
 }
 
-export async function getLogs(): Promise<LogEntry[]> {
+export async function getLogs(): Promise<
+  LogEntry[]
+> {
   if (USE_MOCK) {
     return mockDelay(mockLogs)
   }
 
-  return apiFetch<LogEntry[]>('/api/monitoring/logs')
+  return apiFetch<LogEntry[]>(
+    '/api/monitoring/logs',
+  )
 }
