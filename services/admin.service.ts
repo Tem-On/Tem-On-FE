@@ -76,7 +76,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   }
 
   return apiFetch<DashboardStats>(
-    '/api/admin/dashboard/stats',
+    '/api/admin/dashboard',
   )
 }
 
@@ -88,7 +88,7 @@ export async function getRevenueSeries(): Promise<
   }
 
   return apiFetch<RevenuePoint[]>(
-    '/api/admin/dashboard/revenue',
+    '/api/admin/dashboard/sales',
   )
 }
 
