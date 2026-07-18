@@ -36,18 +36,42 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
+    getDashboardStats()
+      .then((res: any) => {
+        if (res) {
+          setStats({
+            totalOrders: res.totalOrders,
+            totalRevenue: res.totalSales,
+            paidCount: res.paidOrders,
+            cancelledCount: res.canceledOrders,
+            activeEvents: res.activeEvents,
+            soldQuantity: res.totalSoldQuantity
+          })
+        }
+      })
+      .catch(err => console.error("Stats 에러:", err))
 
-  getDashboardStats().then(setStats).catch(err => console.error("Stats 에러:", err))
+    getRevenueSeries()
+      .then((res: any) => {
+        if (res) {
+          setRevenue([
+            {
+              label: '누적 통계',
+              revenue: res.totalSales,
+              orders: res.paidOrders
+            }
+          ])
+        }
+      })
+      .catch(err => console.error("Revenue 에러:", err))
 
-  getRevenueSeries().then(setRevenue).catch(err => console.error("Revenue 에러:", err))
-
-  getAdminOrders()
-    .then((o: any) => {
-      const orderList = Array.isArray(o) ? o : (o?.content || []);
-      setOrders(orderList.slice(0, 5));
-    })
-    .catch(err => console.error("Orders 에러:", err));
-}, [])
+    getAdminOrders()
+      .then((o: any) => {
+        const orderList = Array.isArray(o) ? o : (o?.content || []);
+        setOrders(orderList.slice(0, 5));
+      })
+      .catch(err => console.error("Orders 에러:", err));
+  }, [])
 
   return (
     <>
@@ -126,29 +150,29 @@ export default function AdminDashboardPage() {
             <CardContent className="flex flex-col gap-3">
               {orders.length === 0
                 ? Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))
+                  <Skeleton key={`skeleton-${i}`} className="h-12 w-full" />
+                ))
                 : orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {order.orderNumber}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(order.createdAt)}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-sm font-semibold">
-                          {formatKRW(order.totalAmount)}
-                        </span>
-                        <OrderStatusBadge status={order.status} />
-                      </div>
+                  <div
+                    key={order.id || order.orderNumber}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {order.orderNumber}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(order.createdAt)}
+                      </span>
                     </div>
-                  ))}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-sm font-semibold">
+                        {formatKRW(order.totalAmount)}
+                      </span>
+                      <OrderStatusBadge status={order.status} />
+                    </div>
+                  </div>
+                ))}
             </CardContent>
           </Card>
         </div>
