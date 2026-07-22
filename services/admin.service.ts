@@ -1,4 +1,6 @@
 import type {
+  AdminEventApiResponse,
+  AdminEventProductApiResponse,
   AdminProductApiResponse,
   DashboardStats,
   EventProduct,
@@ -227,6 +229,32 @@ export async function deleteProduct(
 // 이벤트 관리
 // ============================================================
 
+function convertEvent(
+  event: AdminEventApiResponse,
+): EventSummary {
+  return {
+    id: String(event.id),
+    title: event.title,
+    description: event.description ?? '',
+    image: event.image ?? '/placeholder.svg',
+    status: event.status,
+    startAt: event.startAt,
+    endAt: event.endAt,
+    productCount: event.productCount ?? 0,
+  }
+}
+
+interface EventInfoRequest {
+  title: string
+  description: string
+  startAt: string
+  endAt: string
+}
+
+interface EventStatusRequest {
+  status: EventSummary['status']
+}
+
 export async function getAdminEvents(): Promise<
   EventSummary[]
 > {
@@ -234,9 +262,37 @@ export async function getAdminEvents(): Promise<
     return mockDelay(mockEvents)
   }
 
-  return apiFetch<EventSummary[]>(
-    '/api/admin/events',
-  )
+  const response =
+    await apiFetch<AdminEventApiResponse[]>(
+      '/api/admin/events',
+    )
+
+  return response.map(convertEvent)
+}
+
+export async function getAdminEvent(
+  id: string,
+): Promise<EventSummary> {
+  if (USE_MOCK) {
+    const found = mockEvents.find(
+      (event) => event.id === id,
+    )
+
+    if (!found) {
+      throw new Error(
+        '이벤트를 찾을 수 없습니다.',
+      )
+    }
+
+    return mockDelay(found)
+  }
+
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      `/api/admin/events/${id}`,
+    )
+
+  return convertEvent(response)
 }
 
 export async function saveEvent(
@@ -248,8 +304,7 @@ export async function saveEvent(
       title: event.title ?? '',
       description: event.description ?? '',
       image:
-        event.image ??
-        '/images/events/tech-friday.png',
+        event.image ?? '/placeholder.svg',
       status: event.status ?? 'UPCOMING',
       startAt:
         event.startAt ??
@@ -257,18 +312,122 @@ export async function saveEvent(
       endAt:
         event.endAt ??
         new Date().toISOString(),
-      productCount: event.productCount ?? 0,
+      productCount:
+        event.productCount ?? 0,
     })
   }
 
-  const path = event.id
+  if (!event.title?.trim()) {
+    throw new Error(
+      '이벤트명을 입력해주세요.',
+    )
+  }
+
+  if (!event.startAt) {
+    throw new Error(
+      '이벤트 시작일을 입력해주세요.',
+    )
+  }
+
+  if (!event.endAt) {
+    throw new Error(
+      '이벤트 종료일을 입력해주세요.',
+    )
+  }
+
+  const requestBody: EventInfoRequest = {
+    title: event.title.trim(),
+    description:
+      event.description?.trim() ?? '',
+    startAt: event.startAt,
+    endAt: event.endAt,
+  }
+
+  const isUpdate = Boolean(event.id)
+
+  const path = isUpdate
     ? `/api/admin/events/${event.id}`
     : '/api/admin/events'
 
-  return apiFetch<EventSummary>(path, {
-    method: event.id ? 'PATCH' : 'POST',
-    body: event,
-  })
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      path,
+      {
+        method: isUpdate
+          ? 'PATCH'
+          : 'POST',
+        body: requestBody,
+      },
+    )
+
+  let savedEvent = convertEvent(response)
+
+  const selectedStatus =
+    event.status ?? 'UPCOMING'
+
+  /*
+   * 생성 API에서는 기본값이 UPCOMING입니다.
+   * 수정 API에서는 기본정보만 수정합니다.
+   *
+   * 따라서 화면에서 선택한 상태와 서버 상태가 다르면
+   * 상태 변경 API를 추가 호출합니다.
+   */
+  if (
+    selectedStatus !== savedEvent.status
+  ) {
+    const statusRequest: EventStatusRequest = {
+      status: selectedStatus,
+    }
+
+    const statusResponse =
+      await apiFetch<AdminEventApiResponse>(
+        `/api/admin/events/${savedEvent.id}/status`,
+        {
+          method: 'PATCH',
+          body: statusRequest,
+        },
+      )
+
+    savedEvent =
+      convertEvent(statusResponse)
+  }
+
+  return savedEvent
+}
+
+export async function updateEventStatus(
+  eventId: string,
+  status: EventSummary['status'],
+): Promise<EventSummary> {
+  if (USE_MOCK) {
+    const found = mockEvents.find(
+      (event) => event.id === eventId,
+    )
+
+    if (!found) {
+      throw new Error(
+        '이벤트를 찾을 수 없습니다.',
+      )
+    }
+
+    return mockDelay({
+      ...found,
+      status,
+    })
+  }
+
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      `/api/admin/events/${eventId}/status`,
+      {
+        method: 'PATCH',
+        body: {
+          status,
+        },
+      },
+    )
+
+  return convertEvent(response)
 }
 
 export async function deleteEvent(
@@ -290,6 +449,63 @@ export async function deleteEvent(
 // 이벤트 상품 관리
 // ============================================================
 
+function convertEventProduct(
+  item: AdminEventProductApiResponse,
+): EventProduct {
+  return {
+    id: String(item.id),
+    eventId: String(item.eventId),
+    productId: String(item.productId),
+
+    name: item.productName,
+    image:
+      item.productImageUrl ??
+      '/placeholder.svg',
+
+    originalPrice: item.originalPrice,
+    eventPrice: item.eventPrice,
+    purchaseLimit:
+      item.purchaseLimit ?? undefined,
+
+    totalStock: item.totalStock ?? 0,
+    remainingStock:
+      item.remainingStock ?? 0,
+    reservedStock:
+      item.reservedStock ?? 0,
+    soldCount: item.soldCount ?? 0,
+
+    status: item.eventProductStatus,
+    description: '',
+    category: item.categoryName ?? '기타',
+  }
+}
+
+interface EventProductCreateBody {
+  eventId: number
+  productId: number
+  eventPrice: number
+  purchaseLimit: number | null
+}
+
+interface EventProductUpdateBody {
+  productId: number
+  eventPrice: number
+  purchaseLimit: number | null
+}
+
+interface EventProductStatusBody {
+  status: EventProduct['status']
+}
+
+interface StockCreateBody {
+  eventProductId: number
+  quantity: number
+}
+
+interface StockUpdateBody {
+  quantity: number
+}
+
 export async function getAdminEventProducts(): Promise<
   EventProduct[]
 > {
@@ -297,9 +513,36 @@ export async function getAdminEventProducts(): Promise<
     return mockDelay(mockEventProducts)
   }
 
-  return apiFetch<EventProduct[]>(
-    '/api/admin/event-products',
-  )
+  const response = await apiFetch<
+    AdminEventProductApiResponse[]
+  >('/api/admin/event-products')
+
+  return response.map(convertEventProduct)
+}
+
+export async function getAdminEventProduct(
+  id: string,
+): Promise<EventProduct> {
+  if (USE_MOCK) {
+    const found = mockEventProducts.find(
+      (item) => item.id === id,
+    )
+
+    if (!found) {
+      throw new Error(
+        '이벤트 상품을 찾을 수 없습니다.',
+      )
+    }
+
+    return mockDelay(found)
+  }
+
+  const response =
+    await apiFetch<AdminEventProductApiResponse>(
+      `/api/admin/event-products/${id}`,
+    )
+
+  return convertEventProduct(response)
 }
 
 export async function saveEventProduct(
@@ -308,8 +551,8 @@ export async function saveEventProduct(
   if (USE_MOCK) {
     const existingIndex = ep.id
       ? mockEventProducts.findIndex(
-        (item) => item.id === ep.id,
-      )
+          (item) => item.id === ep.id,
+        )
       : -1
 
     if (existingIndex >= 0) {
@@ -388,24 +631,188 @@ export async function saveEventProduct(
     return mockDelay(created)
   }
 
-  const path = ep.id
-    ? `/api/admin/event-products/${ep.id}`
-    : '/api/admin/event-products'
+  if (!ep.eventId) {
+    throw new Error(
+      '이벤트 ID가 존재하지 않습니다.',
+    )
+  }
 
-  return apiFetch<EventProduct>(path, {
-    method: ep.id ? 'PATCH' : 'POST',
-    body: ep,
-  })
+  if (!ep.productId) {
+    throw new Error(
+      '상품 ID가 존재하지 않습니다.',
+    )
+  }
+
+  if (
+    ep.eventPrice === undefined ||
+    ep.eventPrice <= 0
+  ) {
+    throw new Error(
+      '이벤트 가격이 올바르지 않습니다.',
+    )
+  }
+
+  if (
+    ep.totalStock === undefined ||
+    ep.totalStock <= 0
+  ) {
+    throw new Error(
+      '재고 수량이 올바르지 않습니다.',
+    )
+  }
+
+  const selectedStatus =
+    ep.status ?? 'READY'
+
+  // ==========================================================
+  // 수정
+  // ==========================================================
+
+  if (ep.id) {
+    const updateBody: EventProductUpdateBody = {
+      productId: Number(ep.productId),
+      eventPrice: ep.eventPrice,
+      purchaseLimit:
+        ep.purchaseLimit ?? null,
+    }
+
+    await apiFetch<AdminEventProductApiResponse>(
+      `/api/admin/event-products/${ep.id}`,
+      {
+        method: 'PATCH',
+        body: updateBody,
+      },
+    )
+
+    const stockBody: StockUpdateBody = {
+      quantity: ep.totalStock,
+    }
+
+    await apiFetch<string>(
+      `/api/admin/stocks/${ep.id}`,
+      {
+        method: 'PATCH',
+        body: stockBody,
+      },
+    )
+
+    const statusBody: EventProductStatusBody = {
+      status: selectedStatus,
+    }
+
+    await apiFetch<AdminEventProductApiResponse>(
+      `/api/admin/event-products/${ep.id}/status`,
+      {
+        method: 'PATCH',
+        body: statusBody,
+      },
+    )
+
+    return getAdminEventProduct(ep.id)
+  }
+
+  // ==========================================================
+  // 신규 생성
+  // ==========================================================
+
+  const createBody: EventProductCreateBody = {
+    eventId: Number(ep.eventId),
+    productId: Number(ep.productId),
+    eventPrice: ep.eventPrice,
+    purchaseLimit:
+      ep.purchaseLimit ?? null,
+  }
+
+  /**
+   * 1. Commerce Service에 이벤트 상품 생성
+   * 2. 생성된 이벤트 상품 ID를 응답받음
+   */
+  const created =
+    await apiFetch<AdminEventProductApiResponse>(
+      '/api/admin/event-products',
+      {
+        method: 'POST',
+        body: createBody,
+      },
+    )
+
+  /**
+   * 3. QueueStock Service에 초기 재고 생성
+   */
+  const stockBody: StockCreateBody = {
+    eventProductId: created.id,
+    quantity: ep.totalStock,
+  }
+
+  try {
+    await apiFetch<string>(
+      '/api/admin/stocks',
+      {
+        method: 'POST',
+        body: stockBody,
+      },
+    )
+  } catch (error) {
+    /**
+     * 재고 생성에 실패하면 이벤트 상품도 삭제 처리해서
+     * 이벤트 상품만 남는 불완전한 상태를 최소화한다.
+     */
+    try {
+      await apiFetch<string>(
+        `/api/admin/event-products/${created.id}`,
+        {
+          method: 'DELETE',
+        },
+      )
+    } catch {
+      // 원래 재고 생성 오류를 유지한다.
+    }
+
+    throw error
+  }
+
+  /**
+   * 4. READY가 아닌 상태를 선택했다면 상태 변경
+   */
+  if (selectedStatus !== 'READY') {
+    const statusBody: EventProductStatusBody = {
+      status: selectedStatus,
+    }
+
+    await apiFetch<AdminEventProductApiResponse>(
+      `/api/admin/event-products/${created.id}/status`,
+      {
+        method: 'PATCH',
+        body: statusBody,
+      },
+    )
+  }
+
+  /**
+   * 5. 재고까지 반영된 최종 데이터 재조회
+   */
+  return getAdminEventProduct(
+    String(created.id),
+  )
 }
 
 export async function deleteEventProduct(
   id: string,
 ): Promise<void> {
   if (USE_MOCK) {
+    const index =
+      mockEventProducts.findIndex(
+        (item) => item.id === id,
+      )
+
+    if (index >= 0) {
+      mockEventProducts.splice(index, 1)
+    }
+
     return mockDelay(undefined, 300)
   }
 
-  await apiFetch<void>(
+  await apiFetch<string>(
     `/api/admin/event-products/${id}`,
     {
       method: 'DELETE',
