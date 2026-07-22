@@ -145,8 +145,12 @@ export interface EventSummary {
   productCount: number
 }
 
+/**
+ * Commerce Service에서 실제로 내려주는 이벤트 상품 응답 형식
+ */
 export interface AdminEventProductApiResponse {
   id: number
+
   eventId: number
   eventTitle: string
 
@@ -155,12 +159,17 @@ export interface AdminEventProductApiResponse {
   productImageUrl: string | null
   originalPrice: number
   categoryName: string
-  productStatus: string
+  productStatus: ProductStatus
 
   eventPrice: number
   purchaseLimit: number | null
   eventProductStatus: EventProductStatus
   createdAt: string
+
+  totalStock: number
+  remainingStock: number
+  reservedStock: number
+  soldCount: number
 }
 
 export interface AdminEventApiResponse {
@@ -175,19 +184,26 @@ export interface AdminEventApiResponse {
   products: AdminEventProductApiResponse[]
 }
 
+/**
+ * 프론트 화면에서 사용하는 이벤트 상품 형식
+ */
 export interface EventProduct {
   id: string
   eventId: string
   productId: string
+
   name: string
   image: string
+
   originalPrice: number
   eventPrice: number
   purchaseLimit?: number
+
   totalStock: number
   remainingStock: number
   reservedStock: number
   soldCount: number
+
   status: EventProductStatus
   description: string
   category: string
