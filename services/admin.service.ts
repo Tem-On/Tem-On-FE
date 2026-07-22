@@ -883,7 +883,6 @@ export const forceSoldOut = async (
 // 주문 관리
 // ============================================================
 
-// 백엔드 Spring Page 응답 타입 정의 (파일 내부 전용)
 interface SpringPageResponse<T> {
   content: T[]
   totalPages: number
@@ -892,7 +891,6 @@ interface SpringPageResponse<T> {
   number: number
 }
 
-// 1. 전체 주문 목록 조회 (Page 응답에서 content만 추출)
 export async function getAdminOrders(
   page = 0,
   size = 20,
@@ -901,14 +899,12 @@ export async function getAdminOrders(
     return mockDelay(mockOrders)
   }
 
-  // Page 객체를 받아 content 배열 반환
   const res = await apiFetch<SpringPageResponse<Order>>(
     `/api/admin/orders?page=${page}&size=${size}`,
   )
   return res.content
 }
 
-// 2. 주문 상태 변경
 export async function updateOrderStatus(
   orderId: number | string,
   status: Order['status'],
@@ -927,7 +923,7 @@ export async function updateOrderStatus(
   return apiFetch<Order>(`/api/admin/orders/${orderId}/status`, {
     method: 'PATCH',
     body: {
-      status, // 백엔드의 AdminOrderStatusUpdateRequest 필드명과 일치
+      status, 
     },
   })
 }

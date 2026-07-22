@@ -26,7 +26,6 @@ import { formatKRW, formatDateTime } from '@/lib/format'
 import { getAdminOrders, updateOrderStatus } from '@/services/admin.service'
 import type { OrderStatus } from '@/types'
 
-// 💡 백엔드 응답 DTO 타입 정의
 export interface BackendOrderItemResponse {
   id?: number
   name?: string
@@ -41,13 +40,13 @@ export interface BackendOrderResponse {
   orderNumber: string
   totalAmount: number
   status: string
+  productName?: string
   orderedAt: string
   canceledAt?: string | null
   paymentId?: number | null
-  items: BackendOrderItemResponse[]
+  items?: BackendOrderItemResponse[]
 }
 
-// Spring Data Page 응답 타입
 export interface PageResponse<T> {
   content: T[]
   totalPages?: number
@@ -61,7 +60,6 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     getAdminOrders().then((data: BackendOrderResponse[] | PageResponse<BackendOrderResponse> | any) => {
-      // 배열로 올 경우와 Page 객체({ content: [...] })로 올 경우 모두 대응
       if (Array.isArray(data)) {
         setOrders(data)
       } else if (data && Array.isArray(data.content)) {
@@ -82,7 +80,6 @@ export default function AdminOrdersPage() {
 
     const previousStatus = order.status
 
-    // 1. 낙관적 UI 업데이트
     setOrders((prev) =>
       prev
         ? prev.map((o) => (o.orderId === targetId ? { ...o, status } : o))
@@ -90,16 +87,14 @@ export default function AdminOrdersPage() {
     )
 
     try {
-      // 2. 백엔드 API 요청
       await updateOrderStatus(targetId, status)
       toast.success('주문 상태가 변경되었습니다.')
     } catch (error: any) {
-      // 3. 실패 시 이전 상태로 원복
       setOrders((prev) =>
         prev
           ? prev.map((o) =>
-              o.orderId === targetId ? { ...o, status: previousStatus } : o,
-            )
+            o.orderId === targetId ? { ...o, status: previousStatus } : o,
+          )
           : prev,
       )
       toast.error(error?.message || '주문 상태 변경에 실패했습니다.')
@@ -128,59 +123,63 @@ export default function AdminOrdersPage() {
             <TableBody>
               {!orders
                 ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`}>
-                      <TableCell colSpan={5}>
-                        <Skeleton className="h-10 w-full" />
+                  <TableRow key={`skeleton-${i}`}>
+                    <TableCell colSpan={5}>
+                      <Skeleton className="h-10 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+                : orders.map((o) => {
+                  const items = o.items ?? []
+                  const productName =
+                    o.productName ??
+                    items[0]?.name ??
+                    items[0]?.productName ??
+                    '상품 정보 없음'
+
+                  const extraCount = items.length > 0 ? items.length - 1 : 0
+
+                  return (
+                    <TableRow key={o.orderId ?? o.orderNumber}>
+                      <TableCell className="font-mono text-sm">
+                        {o.orderNumber}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {productName} 
+                          {extraCount > 0 && ` 외 ${extraCount}건`}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDateTime(o.orderedAt)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatKRW(o.totalAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={o.status}
+                          onValueChange={(v) =>
+                            handleChange(o, v as OrderStatus)
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue>
+                              <OrderStatusBadge status={o.status as OrderStatus} />
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {orderStatusMeta[s]?.label ?? s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
-                  ))
-                : orders.map((o) => {
-                    const items = o.items ?? []
-                    const firstItemName =
-                      items[0]?.name ?? items[0]?.productName ?? '상품 정보 없음'
-                    const extraCount = items.length - 1
-
-                    return (
-                      <TableRow key={o.orderId ?? o.orderNumber}>
-                        <TableCell className="font-mono text-sm">
-                          {o.orderNumber}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {firstItemName}
-                            {extraCount > 0 && ` 외 ${extraCount}건`}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDateTime(o.orderedAt)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">
-                          {formatKRW(o.totalAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={o.status}
-                            onValueChange={(v) =>
-                              handleChange(o, v as OrderStatus)
-                            }
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue>
-                                <OrderStatusBadge status={o.status as OrderStatus} />
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {statusOptions.map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  {orderStatusMeta[s]?.label ?? s}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  )
+                })}
             </TableBody>
           </Table>
         </Card>

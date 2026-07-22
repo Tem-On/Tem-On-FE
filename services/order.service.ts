@@ -30,6 +30,7 @@ interface BackendOrderResponse {
   orderNumber: string
   totalAmount: number
   status: string
+  productName?: string
   orderedAt: string
   canceledAt?: string | null
   paymentId?: number | null
