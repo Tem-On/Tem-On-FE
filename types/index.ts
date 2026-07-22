@@ -145,6 +145,36 @@ export interface EventSummary {
   productCount: number
 }
 
+export interface AdminEventProductApiResponse {
+  id: number
+  eventId: number
+  eventTitle: string
+
+  productId: number
+  productName: string
+  productImageUrl: string | null
+  originalPrice: number
+  categoryName: string
+  productStatus: string
+
+  eventPrice: number
+  purchaseLimit: number | null
+  eventProductStatus: EventProductStatus
+  createdAt: string
+}
+
+export interface AdminEventApiResponse {
+  id: number
+  title: string
+  description: string | null
+  image: string | null
+  startAt: string
+  endAt: string
+  status: EventStatus
+  productCount: number
+  products: AdminEventProductApiResponse[]
+}
+
 export interface EventProduct {
   id: string
   eventId: string

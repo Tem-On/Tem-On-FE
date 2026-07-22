@@ -1,4 +1,5 @@
 import type {
+  AdminEventApiResponse,
   AdminProductApiResponse,
   DashboardStats,
   EventProduct,
@@ -227,6 +228,32 @@ export async function deleteProduct(
 // 이벤트 관리
 // ============================================================
 
+function convertEvent(
+  event: AdminEventApiResponse,
+): EventSummary {
+  return {
+    id: String(event.id),
+    title: event.title,
+    description: event.description ?? '',
+    image: event.image ?? '/placeholder.svg',
+    status: event.status,
+    startAt: event.startAt,
+    endAt: event.endAt,
+    productCount: event.productCount ?? 0,
+  }
+}
+
+interface EventInfoRequest {
+  title: string
+  description: string
+  startAt: string
+  endAt: string
+}
+
+interface EventStatusRequest {
+  status: EventSummary['status']
+}
+
 export async function getAdminEvents(): Promise<
   EventSummary[]
 > {
@@ -234,9 +261,37 @@ export async function getAdminEvents(): Promise<
     return mockDelay(mockEvents)
   }
 
-  return apiFetch<EventSummary[]>(
-    '/api/admin/events',
-  )
+  const response =
+    await apiFetch<AdminEventApiResponse[]>(
+      '/api/admin/events',
+    )
+
+  return response.map(convertEvent)
+}
+
+export async function getAdminEvent(
+  id: string,
+): Promise<EventSummary> {
+  if (USE_MOCK) {
+    const found = mockEvents.find(
+      (event) => event.id === id,
+    )
+
+    if (!found) {
+      throw new Error(
+        '이벤트를 찾을 수 없습니다.',
+      )
+    }
+
+    return mockDelay(found)
+  }
+
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      `/api/admin/events/${id}`,
+    )
+
+  return convertEvent(response)
 }
 
 export async function saveEvent(
@@ -248,8 +303,7 @@ export async function saveEvent(
       title: event.title ?? '',
       description: event.description ?? '',
       image:
-        event.image ??
-        '/images/events/tech-friday.png',
+        event.image ?? '/placeholder.svg',
       status: event.status ?? 'UPCOMING',
       startAt:
         event.startAt ??
@@ -257,18 +311,122 @@ export async function saveEvent(
       endAt:
         event.endAt ??
         new Date().toISOString(),
-      productCount: event.productCount ?? 0,
+      productCount:
+        event.productCount ?? 0,
     })
   }
 
-  const path = event.id
+  if (!event.title?.trim()) {
+    throw new Error(
+      '이벤트명을 입력해주세요.',
+    )
+  }
+
+  if (!event.startAt) {
+    throw new Error(
+      '이벤트 시작일을 입력해주세요.',
+    )
+  }
+
+  if (!event.endAt) {
+    throw new Error(
+      '이벤트 종료일을 입력해주세요.',
+    )
+  }
+
+  const requestBody: EventInfoRequest = {
+    title: event.title.trim(),
+    description:
+      event.description?.trim() ?? '',
+    startAt: event.startAt,
+    endAt: event.endAt,
+  }
+
+  const isUpdate = Boolean(event.id)
+
+  const path = isUpdate
     ? `/api/admin/events/${event.id}`
     : '/api/admin/events'
 
-  return apiFetch<EventSummary>(path, {
-    method: event.id ? 'PATCH' : 'POST',
-    body: event,
-  })
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      path,
+      {
+        method: isUpdate
+          ? 'PATCH'
+          : 'POST',
+        body: requestBody,
+      },
+    )
+
+  let savedEvent = convertEvent(response)
+
+  const selectedStatus =
+    event.status ?? 'UPCOMING'
+
+  /*
+   * 생성 API에서는 기본값이 UPCOMING입니다.
+   * 수정 API에서는 기본정보만 수정합니다.
+   *
+   * 따라서 화면에서 선택한 상태와 서버 상태가 다르면
+   * 상태 변경 API를 추가 호출합니다.
+   */
+  if (
+    selectedStatus !== savedEvent.status
+  ) {
+    const statusRequest: EventStatusRequest = {
+      status: selectedStatus,
+    }
+
+    const statusResponse =
+      await apiFetch<AdminEventApiResponse>(
+        `/api/admin/events/${savedEvent.id}/status`,
+        {
+          method: 'PATCH',
+          body: statusRequest,
+        },
+      )
+
+    savedEvent =
+      convertEvent(statusResponse)
+  }
+
+  return savedEvent
+}
+
+export async function updateEventStatus(
+  eventId: string,
+  status: EventSummary['status'],
+): Promise<EventSummary> {
+  if (USE_MOCK) {
+    const found = mockEvents.find(
+      (event) => event.id === eventId,
+    )
+
+    if (!found) {
+      throw new Error(
+        '이벤트를 찾을 수 없습니다.',
+      )
+    }
+
+    return mockDelay({
+      ...found,
+      status,
+    })
+  }
+
+  const response =
+    await apiFetch<AdminEventApiResponse>(
+      `/api/admin/events/${eventId}/status`,
+      {
+        method: 'PATCH',
+        body: {
+          status,
+        },
+      },
+    )
+
+  return convertEvent(response)
 }
 
 export async function deleteEvent(
