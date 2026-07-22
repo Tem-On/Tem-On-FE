@@ -145,19 +145,65 @@ export interface EventSummary {
   productCount: number
 }
 
-export interface EventProduct {
-  id: string
-  eventId: string
-  productId: string
-  name: string
-  image: string
+/**
+ * Commerce Service에서 실제로 내려주는 이벤트 상품 응답 형식
+ */
+export interface AdminEventProductApiResponse {
+  id: number
+
+  eventId: number
+  eventTitle: string
+
+  productId: number
+  productName: string
+  productImageUrl: string | null
   originalPrice: number
+  categoryName: string
+  productStatus: ProductStatus
+
   eventPrice: number
-  purchaseLimit?: number
+  purchaseLimit: number | null
+  eventProductStatus: EventProductStatus
+  createdAt: string
+
   totalStock: number
   remainingStock: number
   reservedStock: number
   soldCount: number
+}
+
+export interface AdminEventApiResponse {
+  id: number
+  title: string
+  description: string | null
+  image: string | null
+  startAt: string
+  endAt: string
+  status: EventStatus
+  productCount: number
+  products: AdminEventProductApiResponse[]
+}
+
+/**
+ * 프론트 화면에서 사용하는 이벤트 상품 형식
+ */
+export interface EventProduct {
+  id: string
+  eventId: string
+  productId: string
+
+  name: string
+  image: string
+
+  originalPrice: number
+  eventPrice: number
+  purchaseLimit?: number
+
+  totalStock: number
+  remainingStock: number
+  reservedStock: number
+  soldCount: number
+
   status: EventProductStatus
   description: string
   category: string
