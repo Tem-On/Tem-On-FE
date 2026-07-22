@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, Check } from 'lucide-react'
+import { AlertTriangle, Check, Ban } from 'lucide-react'
 import { AdminHeader } from '@/components/admin/admin-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,13 +20,14 @@ import {
 } from '@/components/ui/table'
 import { StockBar } from '@/components/stock-bar'
 import { formatNumber } from '@/lib/format'
-import { getStockRows, updateStock } from '@/services/admin.service'
+import { getStockRows, updateStock, forceSoldOut } from '@/services/admin.service'
 import { subscribeStock } from '@/services/realtime.service'
 import type { StockRow } from '@/types'
 
 export default function AdminStockPage() {
   const [rows, setRows] = useState<StockRow[] | null>(null)
   const [drafts, setDrafts] = useState<Record<string, number>>({})
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
     getStockRows().then((data) => {
@@ -37,7 +38,6 @@ export default function AdminStockPage() {
     })
   }, [])
 
-  // 실시간 재고 감소 시뮬레이션 (판매중 상품)
   useEffect(() => {
     if (!rows) return
     const subs = rows
@@ -69,22 +69,79 @@ export default function AdminStockPage() {
         ),
       )
     return () => subs.forEach((u) => u())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows === null])
 
   const handleUpdate = async (row: StockRow) => {
-    const next = drafts[row.eventProductId]
-    await updateStock(row.eventProductId, next)
-    setRows((prev) =>
-      prev
-        ? prev.map((r) =>
-            r.eventProductId === row.eventProductId
-              ? { ...r, totalStock: next }
-              : r,
-          )
-        : prev,
-    )
-    toast.success('재고가 업데이트되었습니다.')
+    const nextTotal = drafts[row.eventProductId]
+    const minRequired = row.reservedStock + row.soldCount
+
+    if (nextTotal < minRequired) {
+      toast.error(
+        `총 재고는 (선점 + 판매) 수량인 ${minRequired}개 이상이어야 합니다.`,
+      )
+      return
+    }
+
+    setUpdatingId(row.eventProductId)
+    try {
+      await updateStock(row.eventProductId, nextTotal)
+      setRows((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.eventProductId === row.eventProductId
+                ? {
+                    ...r,
+                    totalStock: nextTotal,
+                    remainingStock: Math.max(
+                      0,
+                      nextTotal - r.reservedStock - r.soldCount,
+                    ),
+                  }
+                : r,
+            )
+          : prev,
+      )
+      toast.success('재고가 성공적으로 업데이트되었습니다.')
+    } catch (err: any) {
+      const errorMsg =
+        err?.response?.data || '재고 수량 수정 중 오류가 발생했습니다.'
+      toast.error(errorMsg)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleForceSoldOut = async (row: StockRow) => {
+    if (
+      !confirm(
+        `[${row.productName}] 상품을 강제 품절 처리하시겠습니까?\n남은 재고가 0으로 설정됩니다.`,
+      )
+    ) {
+      return
+    }
+
+    setUpdatingId(row.eventProductId)
+    try {
+      await forceSoldOut(row.eventProductId)
+      setRows((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.eventProductId === row.eventProductId
+                ? {
+                    ...r,
+                    totalStock: r.reservedStock + r.soldCount,
+                    remainingStock: 0,
+                  }
+                : r,
+            )
+          : prev,
+      )
+      toast.success('상품이 강제 품절 처리되었습니다.')
+    } catch (err) {
+      toast.error('강제 품절 처리에 실패했습니다.')
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   const lowStockCount =
@@ -118,7 +175,7 @@ export default function AdminStockPage() {
                 <TableHead className="w-52">실시간 재고</TableHead>
                 <TableHead className="text-right">예약</TableHead>
                 <TableHead className="text-right">판매</TableHead>
-                <TableHead className="w-44">총 재고 조정</TableHead>
+                <TableHead className="w-56">총 재고 조정 및 액션</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,53 +187,74 @@ export default function AdminStockPage() {
                       </TableCell>
                     </TableRow>
                   ))
-                : rows.map((r) => (
-                    <TableRow key={r.eventProductId}>
-                      <TableCell className="font-medium">
-                        {r.productName}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.eventTitle}
-                      </TableCell>
-                      <TableCell>
-                        <StockBar
-                          remaining={r.remainingStock}
-                          total={r.totalStock}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <Badge variant="outline">
-                          {formatNumber(r.reservedStock)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatNumber(r.soldCount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            type="number"
-                            className="h-9 w-24"
-                            value={drafts[r.eventProductId] ?? r.totalStock}
-                            onChange={(e) =>
-                              setDrafts({
-                                ...drafts,
-                                [r.eventProductId]: Number(e.target.value),
-                              })
-                            }
+                : rows.map((r) => {
+                    const minAllowed = r.reservedStock + r.soldCount
+                    const isBusy = updatingId === r.eventProductId
+
+                    return (
+                      <TableRow key={r.eventProductId}>
+                        <TableCell className="font-medium">
+                          {r.productName}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {r.eventTitle}
+                        </TableCell>
+                        <TableCell>
+                          <StockBar
+                            remaining={r.remainingStock}
+                            total={r.totalStock}
                           />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            aria-label="적용"
-                            onClick={() => handleUpdate(r)}
-                          >
-                            <Check />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <Badge variant="outline">
+                            {formatNumber(r.reservedStock)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatNumber(r.soldCount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="number"
+                              className="h-9 w-24"
+                              min={minAllowed}
+                              disabled={isBusy}
+                              value={
+                                drafts[r.eventProductId] ?? r.totalStock
+                              }
+                              onChange={(e) =>
+                                setDrafts({
+                                  ...drafts,
+                                  [r.eventProductId]: Number(e.target.value),
+                                })
+                              }
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              aria-label="적용"
+                              disabled={isBusy}
+                              onClick={() => handleUpdate(r)}
+                            >
+                              <Check className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="강제 품절"
+                              title="강제 품절 처리"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={isBusy || r.remainingStock <= 0}
+                              onClick={() => handleForceSoldOut(r)}
+                            >
+                              <Ban className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
             </TableBody>
           </Table>
         </Card>

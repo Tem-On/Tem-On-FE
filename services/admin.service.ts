@@ -198,8 +198,8 @@ export async function saveProduct(
           category: product.category,
           ...(isUpdate
             ? {
-                status: product.status,
-              }
+              status: product.status,
+            }
             : {}),
         },
       },
@@ -308,8 +308,8 @@ export async function saveEventProduct(
   if (USE_MOCK) {
     const existingIndex = ep.id
       ? mockEventProducts.findIndex(
-          (item) => item.id === ep.id,
-        )
+        (item) => item.id === ep.id,
+      )
       : -1
 
     if (existingIndex >= 0) {
@@ -417,35 +417,59 @@ export async function deleteEventProduct(
 // 재고 관리
 // ============================================================
 
-export async function getStockRows(): Promise<
-  StockRow[]
-> {
+interface StockResponseDTO {
+  id?: number
+  eventProductId: number | string
+  productName: string
+  eventTitle: string
+  totalQuantity: number
+  remainingQuantity: number
+  reservedQuantity: number
+  soldQuantity: number
+}
+
+export const getStockRows = async (): Promise<StockRow[]> => {
   if (USE_MOCK) {
     return mockDelay(buildStockRows())
   }
 
-  return apiFetch<StockRow[]>(
-    '/api/admin/stocks',
-  )
+  const data = await apiFetch<StockResponseDTO[]>('/api/admin/stocks')
+
+  return data.map((item) => ({
+    eventProductId: String(item.eventProductId),
+    productName: item.productName || `이벤트 상품 #${item.eventProductId}`,
+    eventTitle: item.eventTitle || '-',
+    totalStock: item.totalQuantity,
+    remainingStock: item.remainingQuantity,
+    reservedStock: item.reservedQuantity,
+    soldCount: item.soldQuantity,
+  }))
 }
 
-export async function updateStock(
-  eventProductId: string,
-  totalStock: number,
-): Promise<void> {
+export const updateStock = async (
+  eventProductId: string | number,
+  quantity: number,
+): Promise<string> => {
   if (USE_MOCK) {
-    return mockDelay(undefined, 300)
+    return mockDelay('수정 완료')
   }
 
-  await apiFetch<void>(
-    `/api/admin/stocks/${eventProductId}`,
-    {
-      method: 'PATCH',
-      body: {
-        totalStock,
-      },
-    },
-  )
+  return apiFetch<string>(`/api/admin/stocks/${eventProductId}`, {
+    method: 'PATCH',
+    body: { quantity }, 
+  })
+}
+
+export const forceSoldOut = async (
+  eventProductId: string | number,
+): Promise<string> => {
+  if (USE_MOCK) {
+    return mockDelay('품절 처리 완료')
+  }
+
+  return apiFetch<string>(`/api/admin/stocks/${eventProductId}/sold-out`, {
+    method: 'PATCH',
+  })
 }
 
 // ============================================================
