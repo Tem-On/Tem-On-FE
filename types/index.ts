@@ -299,8 +299,10 @@ export interface StockRow {
 }
 
 export interface QueueAdminRow {
+  eventProductId: string
   eventId: string
   eventTitle: string
+  productName: string
   waitingCount: number
   enteredCount: number
   gateStatus: QueueGateStatus
