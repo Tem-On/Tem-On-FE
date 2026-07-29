@@ -365,13 +365,7 @@ export async function saveEvent(
   const selectedStatus =
     event.status ?? 'UPCOMING'
 
-  /*
-   * 생성 API에서는 기본값이 UPCOMING입니다.
-   * 수정 API에서는 기본정보만 수정합니다.
-   *
-   * 따라서 화면에서 선택한 상태와 서버 상태가 다르면
-   * 상태 변경 API를 추가 호출합니다.
-   */
+
   if (
     selectedStatus !== savedEvent.status
   ) {
@@ -723,10 +717,6 @@ export async function saveEventProduct(
       ep.purchaseLimit ?? null,
   }
 
-  /**
-   * 1. Commerce Service에 이벤트 상품 생성
-   * 2. 생성된 이벤트 상품 ID를 응답받음
-   */
   const created =
     await apiFetch<AdminEventProductApiResponse>(
       '/api/admin/event-products',
@@ -736,9 +726,6 @@ export async function saveEventProduct(
       },
     )
 
-  /**
-   * 3. QueueStock Service에 초기 재고 생성
-   */
   const stockBody: StockCreateBody = {
     eventProductId: created.id,
     quantity: ep.totalStock,
@@ -753,10 +740,7 @@ export async function saveEventProduct(
       },
     )
   } catch (error) {
-    /**
-     * 재고 생성에 실패하면 이벤트 상품도 삭제 처리해서
-     * 이벤트 상품만 남는 불완전한 상태를 최소화한다.
-     */
+
     try {
       await apiFetch<string>(
         `/api/admin/event-products/${created.id}`,
@@ -765,15 +749,12 @@ export async function saveEventProduct(
         },
       )
     } catch {
-      // 원래 재고 생성 오류를 유지한다.
+
     }
 
     throw error
   }
 
-  /**
-   * 4. READY가 아닌 상태를 선택했다면 상태 변경
-   */
   if (selectedStatus !== 'READY') {
     const statusBody: EventProductStatusBody = {
       status: selectedStatus,
@@ -788,9 +769,7 @@ export async function saveEventProduct(
     )
   }
 
-  /**
-   * 5. 재고까지 반영된 최종 데이터 재조회
-   */
+
   return getAdminEventProduct(
     String(created.id),
   )
@@ -932,6 +911,16 @@ export async function updateOrderStatus(
 // 대기열 관리
 // ============================================================
 
+interface AdminQueueApiResponse {
+  eventProductId: number
+  eventId: number
+  eventTitle: string
+  productName: string
+  gateStatus: 'OPEN' | 'CLOSED'
+  waitingCount: number
+  enteredCount: number
+}
+
 export async function getQueueAdminRows(): Promise<
   QueueAdminRow[]
 > {
@@ -939,41 +928,54 @@ export async function getQueueAdminRows(): Promise<
     return mockDelay(buildQueueRows())
   }
 
-  return apiFetch<QueueAdminRow[]>(
-    '/api/admin/queues',
-  )
+  const response =
+    await apiFetch<AdminQueueApiResponse[]>(
+      '/api/admin/queue',
+    )
+
+  return response.map((item) => ({
+    eventProductId: String(item.eventProductId),
+    eventId: String(item.eventId),
+    eventTitle: item.eventTitle,
+    productName: item.productName,
+    waitingCount: item.waitingCount,
+    enteredCount: item.enteredCount,
+    gateStatus: item.gateStatus,
+  }))
 }
 
 export async function setQueueGate(
-  eventId: string,
+  eventProductId: string,
   gateStatus: 'OPEN' | 'CLOSED',
 ): Promise<void> {
   if (USE_MOCK) {
     return mockDelay(undefined, 300)
   }
 
+  const action =
+    gateStatus === 'OPEN'
+      ? 'open'
+      : 'close'
+
   await apiFetch<void>(
-    `/api/admin/queues/${eventId}/gate`,
+    `/api/admin/queue/${eventProductId}/${action}`,
     {
       method: 'PATCH',
-      body: {
-        gateStatus,
-      },
     },
   )
 }
 
 export async function resetQueue(
-  eventId: string,
+  eventProductId: string,
 ): Promise<void> {
   if (USE_MOCK) {
     return mockDelay(undefined, 300)
   }
 
   await apiFetch<void>(
-    `/api/admin/queues/${eventId}/reset`,
+    `/api/admin/queue/${eventProductId}`,
     {
-      method: 'POST',
+      method: 'DELETE',
     },
   )
 }

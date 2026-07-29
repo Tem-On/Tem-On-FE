@@ -1,6 +1,7 @@
 import { ShopShell } from '@/components/shop-shell'
 import { HeroBanner } from '@/components/hero-banner'
 import { HomeSections } from '@/components/home/home-sections'
+import { AdminButton } from '@/components/admin-button'
 import {
   getEvents,
   getPopularEventProducts,
@@ -20,11 +21,16 @@ export default async function HomePage() {
 
   return (
     <ShopShell>
+      <div className="mx-auto flex w-full max-w-6xl justify-end px-4 pt-6">
+        <AdminButton />
+      </div>
+
       {heroEvents.length > 0 && (
         <div className="mx-auto w-full max-w-6xl px-4 pt-6 md:pt-10">
           <HeroBanner events={heroEvents} />
         </div>
       )}
+
       <HomeSections
         liveEvents={liveEvents}
         upcomingEvents={upcomingEvents}
