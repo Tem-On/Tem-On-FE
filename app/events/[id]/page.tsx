@@ -96,5 +96,5 @@ export default async function EventDetailPage({
 }
 
 export async function generateStaticParams() {
-  return [];
+  return [{ id: '1' }]
 }
