@@ -1,7 +1,7 @@
 import OrderClient from './OrderClient'
 
 export async function generateStaticParams() {
-  return []
+  return [{ id: '1' }]
 }
 
 export default function Page() {

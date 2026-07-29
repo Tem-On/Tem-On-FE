@@ -1,7 +1,7 @@
 import ProductClient from './ProductClient'
 
 export async function generateStaticParams() {
-  return []
+  return [{ id: '1' }]
 }
 
 export default function Page() {
