@@ -24,7 +24,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18
+        node-version: 20
         cache: 'pnpm'
 
     # 4. 의존성 패키지 설치 (--no-frozen-lockfile 로 변경)
