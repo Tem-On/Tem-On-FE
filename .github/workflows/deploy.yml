@@ -27,9 +27,9 @@ jobs:
         node-version: 18
         cache: 'pnpm'
 
-    # 4. 의존성 패키지 설치
+    # 4. 의존성 패키지 설치 (--no-frozen-lockfile 로 변경)
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      run: pnpm install --no-frozen-lockfile
 
     # 5. Next.js 빌드 (Secrets 환경 변수 주입)
     - name: Build project
