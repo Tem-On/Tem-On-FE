@@ -25,10 +25,10 @@ export default async function EventProductPage({
   const discount =
     product.originalPrice > 0
       ? Math.round(
-          ((product.originalPrice - product.eventPrice) /
-            product.originalPrice) *
-            100,
-        )
+        ((product.originalPrice - product.eventPrice) /
+          product.originalPrice) *
+        100,
+      )
       : 0
 
   return (
@@ -89,12 +89,12 @@ export default async function EventProductPage({
               <div className="flex justify-between">
                 <span>재고</span>
                 <span>{product.remainingStock}개</span>
-                </div>
+              </div>
 
-                <div className="flex justify-between">
+              <div className="flex justify-between">
                 <span>판매량</span>
                 <span>{product.soldCount}개</span>
-            </div>
+              </div>
 
               <div className="flex justify-between">
                 <span>상태</span>
@@ -104,9 +104,9 @@ export default async function EventProductPage({
             </div>
 
             <Link href={`/queue/${product.eventId}?product=${product.id}`}>
-                <Button className="w-full">
-                    대기열 입장
-                </Button>
+              <Button className="w-full">
+                대기열 입장
+              </Button>
             </Link>
 
           </div>
@@ -115,4 +115,8 @@ export default async function EventProductPage({
       </div>
     </ShopShell>
   )
+}
+
+export async function generateStaticParams() {
+  return [];
 }
