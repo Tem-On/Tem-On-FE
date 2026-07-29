@@ -1,9 +1,12 @@
 import QueueClient from './QueueClient'
 
 export async function generateStaticParams() {
-  return [{ id: '1' }]
+  return [
+    { eventId: '1' },
+    { eventId: '2' },
+  ]
 }
 
-export default function Page() {
+export default function QueuePage() {
   return <QueueClient />
 }
