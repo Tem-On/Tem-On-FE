@@ -149,3 +149,7 @@ export default function OrderCompletePage() {
     </ShopShell>
   )
 }
+
+export async function generateStaticParams() {
+  return [];
+}

@@ -94,3 +94,7 @@ export default async function EventDetailPage({
     </ShopShell>
   )
 }
+
+export async function generateStaticParams() {
+  return [];
+}

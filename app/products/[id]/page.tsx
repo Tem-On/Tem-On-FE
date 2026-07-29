@@ -238,3 +238,7 @@ export default function ProductPage() {
     </ShopShell>
   )
 }
+
+export async function generateStaticParams() {
+  return [];
+}

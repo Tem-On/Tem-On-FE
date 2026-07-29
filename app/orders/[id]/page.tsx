@@ -425,3 +425,7 @@ export default function OrderPaymentPage() {
     </ShopShell>
   )
 }
+
+export async function generateStaticParams() {
+  return [];
+}

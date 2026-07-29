@@ -446,3 +446,7 @@ export default function QueuePage() {
     </Suspense>
   )
 }
+
+export async function generateStaticParams() {
+  return [];
+}
