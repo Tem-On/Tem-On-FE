@@ -33,27 +33,14 @@ function Section({
 }
 
 export default async function EventsPage() {
-  // =========================================================================
-  // 1. [디버깅 로그] GitHub Actions 빌드 콘솔에서 어떤 URL을 호출하는지 확인
-  // =========================================================================
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
-  console.log('==================================================')
-  console.log('[BUILD DEBUG] 현재 환경변수 API BASE URL:', baseUrl)
-  console.log('[BUILD DEBUG] 실제 호출되는 전체 URL:', `${baseUrl}/api/events`)
-  console.log('==================================================')
-
-  // =========================================================================
-  // 2. [빌드 에러 방어] try-catch 추가
-  //    백엔드가 401을 주거나 꺼져있어도 빌드가 멈추지 않고 빈 배열로 정적 생성 진행
-  // =========================================================================
   let events: Awaited<ReturnType<typeof getEvents>> = []
 
   try {
     events = await getEvents()
-  } catch (error) {
-    console.warn('[BUILD WARN] 빌드 시점 API 호출 실패. 빈 목록으로 페이지를 생성합니다.', error)
+  } catch {
     events = []
   }
+
   const live = events.filter((e) => e.status === 'OPEN')
   const upcoming = events.filter((e) => e.status === 'UPCOMING')
   const closed = events.filter((e) => e.status === 'CLOSED')
