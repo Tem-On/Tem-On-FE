@@ -53,3 +53,8 @@ jobs:
     - name: Deploy to S3
       run: |
         aws s3 sync ./out s3://temon-frontend-dev --delete
+    
+    # 8. CloudFront 캐시 무효화
+    - name: Invalidate CloudFront Cache
+      run: |
+        aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
