@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import { ShopShell } from '@/components/shop-shell'
 import { EventCard } from '@/components/event-card'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
@@ -8,6 +11,8 @@ export const metadata = {
   title: '이벤트 | Tem-On',
 }
 
+type EventList = Awaited<ReturnType<typeof getEvents>>
+
 function Section({
   title,
   accent,
@@ -15,7 +20,7 @@ function Section({
 }: {
   title: string
   accent: string
-  events: Awaited<ReturnType<typeof getEvents>>
+  events: EventList
 }) {
   if (events.length === 0) return null
   return (
@@ -32,26 +37,34 @@ function Section({
   )
 }
 
-export default async function EventsPage() {
-  let events: Awaited<ReturnType<typeof getEvents>> = []
+export default function EventsPage() {
+  const [events, setEvents] = useState<EventList>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  console.log('[EventsPage] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL)
-
-  try {
+  useEffect(() => {
+    console.log('[EventsPage] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL)
     console.log('[EventsPage] getEvents() 호출 시작...')
-    events = await getEvents()
-    console.log('[EventsPage] getEvents() 성공! 수신된 이벤트 개수:', events.length)
-  } catch (error) {
-    console.error('[EventsPage] getEvents() 실패 원인:', error)
-    events = []
-  }
+
+    getEvents()
+      .then((data) => {
+        console.log('[EventsPage] getEvents() 성공! 수신된 이벤트 개수:', data.length)
+        setEvents(data)
+      })
+      .catch((error) => {
+        console.error('[EventsPage] getEvents() 실패 원인:', error)
+        setEvents([])
+      })
+      .finally(() => {
+        setIsLoading(false) 
+      })
+  }, [])
 
   const live = events.filter((e) => e.status === 'OPEN')
   const upcoming = events.filter((e) => e.status === 'UPCOMING')
   const closed = events.filter((e) => e.status === 'CLOSED')
 
   return (
-    <ShopShell>
+<ShopShell>
       <div className="mx-auto w-full max-w-6xl px-4 py-8 md:py-12">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold md:text-3xl">전체 이벤트</h1>
@@ -61,19 +74,23 @@ export default async function EventsPage() {
         </div>
 
         <div className="mt-8 flex flex-col gap-12">
-          <Section title="진행 중인 라이브" accent="text-danger" events={live} />
-          <Section
-            title="오픈 예정"
-            accent="text-primary"
-            events={upcoming}
-          />
-          <Section
-            title="종료된 이벤트"
-            accent="text-muted-foreground"
-            events={closed}
-          />
+          {!isLoading && (
+            <>
+              <Section title="진행 중인 라이브" accent="text-danger" events={live} />
+              <Section
+                title="오픈 예정"
+                accent="text-primary"
+                events={upcoming}
+              />
+              <Section
+                title="종료된 이벤트"
+                accent="text-muted-foreground"
+                events={closed}
+              />
+            </>
+          )}
 
-          {events.length === 0 && (
+          {!isLoading && events.length === 0 && (
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
