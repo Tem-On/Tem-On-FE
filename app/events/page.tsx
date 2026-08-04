@@ -7,7 +7,6 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/
 import { CalendarX } from 'lucide-react'
 import { getEvents } from '@/services/event.service'
 
-
 type EventList = Awaited<ReturnType<typeof getEvents>>
 
 function Section({
@@ -39,20 +38,15 @@ export default function EventsPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    console.log('[EventsPage] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL)
-    console.log('[EventsPage] getEvents() 호출 시작...')
-
     getEvents()
       .then((data) => {
-        console.log('[EventsPage] getEvents() 성공! 수신된 이벤트 개수:', data.length)
         setEvents(data)
       })
-      .catch((error) => {
-        console.error('[EventsPage] getEvents() 실패 원인:', error)
+      .catch(() => {
         setEvents([])
       })
       .finally(() => {
-        setIsLoading(false) 
+        setIsLoading(false)
       })
   }, [])
 
@@ -61,7 +55,7 @@ export default function EventsPage() {
   const closed = events.filter((e) => e.status === 'CLOSED')
 
   return (
-<ShopShell>
+    <ShopShell>
       <div className="mx-auto w-full max-w-6xl px-4 py-8 md:py-12">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold md:text-3xl">전체 이벤트</h1>
