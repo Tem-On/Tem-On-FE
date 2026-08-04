@@ -7,9 +7,6 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/
 import { CalendarX } from 'lucide-react'
 import { getEvents } from '@/services/event.service'
 
-export const metadata = {
-  title: '이벤트 | Tem-On',
-}
 
 type EventList = Awaited<ReturnType<typeof getEvents>>
 
