@@ -35,9 +35,14 @@ function Section({
 export default async function EventsPage() {
   let events: Awaited<ReturnType<typeof getEvents>> = []
 
+  console.log('[EventsPage] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL)
+
   try {
+    console.log('[EventsPage] getEvents() 호출 시작...')
     events = await getEvents()
-  } catch {
+    console.log('[EventsPage] getEvents() 성공! 수신된 이벤트 개수:', events.length)
+  } catch (error) {
+    console.error('[EventsPage] getEvents() 실패 원인:', error)
     events = []
   }
 
