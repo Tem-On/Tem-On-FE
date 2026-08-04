@@ -100,7 +100,9 @@ function ProductInner() {
           },
         ],
       })
-      router.push(`/orders/${order.id}`)
+      router.push(
+        `/orders/payment?orderId=${encodeURIComponent(order.id)}`,
+      )
     } catch {
       toast.error('주문 생성에 실패했습니다. 다시 시도해주세요.')
       setSubmitting(false)

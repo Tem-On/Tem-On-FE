@@ -1,33 +1,87 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import {
+  useEffect,
+  useState,
+} from 'react'
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { CheckCircle2, Package, Receipt } from 'lucide-react'
+import {
+  CheckCircle2,
+  Package,
+  Receipt,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import { ShopShell } from '@/components/shop-shell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+} from '@/components/ui/card'
 import { OrderStatusBadge } from '@/components/status-badge'
-import { formatKRW, formatDateTime } from '@/lib/format'
+import {
+  formatKRW,
+  formatDateTime,
+} from '@/lib/format'
 import { getOrder } from '@/services/order.service'
 import type { Order } from '@/types'
 
-export default function OrderCompletePage() {
-  const params = useParams<{ id: string }>()
-  const [order, setOrder] = useState<Order | null>(null)
+export default function OrderCompleteClient() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const orderId =
+    searchParams.get('orderId')
+
+  const [order, setOrder] =
+    useState<Order | null>(null)
+
+  const [loading, setLoading] =
+    useState(true)
 
   useEffect(() => {
-    getOrder(params.id).then((o) =>
-      setOrder({
-        ...o,
-        status: 'PAID',
-        paidAt: o.paidAt ?? new Date().toISOString(),
-      }),
-    )
-  }, [params.id])
+    const loadOrder = async () => {
+      if (!orderId) {
+        toast.error(
+          '주문 번호가 없습니다.',
+        )
+
+        router.replace('/events')
+        return
+      }
+
+      try {
+        setLoading(true)
+
+        const result =
+          await getOrder(orderId)
+
+        setOrder(result)
+      } catch (error) {
+        console.error(
+          '주문 완료 정보 조회 실패:',
+          error,
+        )
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : '주문 정보를 불러오지 못했습니다.'
+
+        toast.error(message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadOrder()
+  }, [orderId, router])
 
   return (
     <ShopShell>
@@ -43,13 +97,33 @@ export default function OrderCompletePage() {
             </h1>
 
             <p className="text-pretty text-sm text-muted-foreground">
-              선착순 구매에 성공했어요! 주문 내역을 확인해보세요.
+              선착순 구매에 성공했어요!
+              주문 내역을 확인해보세요.
             </p>
           </div>
         </div>
 
-        {!order ? (
+        {loading ? (
           <Skeleton className="mt-8 h-56 w-full rounded-xl" />
+        ) : !order ? (
+          <Card className="mt-8">
+            <CardContent className="flex flex-col items-center gap-4 py-10">
+              <p className="text-sm text-muted-foreground">
+                주문 정보를 불러오지
+                못했습니다.
+              </p>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  router.replace('/events')
+                }
+              >
+                이벤트 목록으로 돌아가기
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <Card className="mt-8">
             <CardContent className="flex flex-col gap-5 pt-6">
@@ -59,7 +133,9 @@ export default function OrderCompletePage() {
                   {order.orderNumber}
                 </div>
 
-                <OrderStatusBadge status={order.status} />
+                <OrderStatusBadge
+                  status={order.status}
+                />
               </div>
 
               <Separator />
@@ -71,7 +147,10 @@ export default function OrderCompletePage() {
                 >
                   <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
                     <Image
-                      src={item.image || '/placeholder.svg'}
+                      src={
+                        item.image ||
+                        '/placeholder.svg'
+                      }
                       alt={item.name}
                       fill
                       sizes="64px"
@@ -91,7 +170,8 @@ export default function OrderCompletePage() {
 
                   <span className="font-semibold">
                     {formatKRW(
-                      item.eventPrice * item.quantity,
+                      item.eventPrice *
+                        item.quantity,
                     )}
                   </span>
                 </div>
@@ -107,7 +187,9 @@ export default function OrderCompletePage() {
 
                   <span>
                     {order.paidAt
-                      ? formatDateTime(order.paidAt)
+                      ? formatDateTime(
+                          order.paidAt,
+                        )
                       : '-'}
                   </span>
                 </div>
@@ -118,7 +200,9 @@ export default function OrderCompletePage() {
                   </span>
 
                   <span className="text-lg font-bold text-primary">
-                    {formatKRW(order.totalAmount)}
+                    {formatKRW(
+                      order.totalAmount,
+                    )}
                   </span>
                 </div>
               </div>

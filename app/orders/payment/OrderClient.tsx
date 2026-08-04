@@ -5,8 +5,8 @@ import {
   useState,
 } from 'react'
 import {
-  useParams,
   useRouter,
+  useSearchParams,
 } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
@@ -59,9 +59,12 @@ const methods: {
   },
 ]
 
-export default function OrderPaymentPage() {
+export default function OrderClient() {
   const router = useRouter()
-  const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
+
+  const orderId =
+    searchParams.get('orderId')
 
   const [order, setOrder] =
     useState<Order | null>(null)
@@ -83,12 +86,20 @@ export default function OrderPaymentPage() {
 
   useEffect(() => {
     const loadOrder = async () => {
+      if (!orderId) {
+        toast.error(
+          '주문 번호가 없습니다.',
+        )
+
+        router.replace('/events')
+        return
+      }
+
       try {
         setLoading(true)
 
-        const result = await getOrder(
-          params.id,
-        )
+        const result =
+          await getOrder(orderId)
 
         setOrder(result)
       } catch (error) {
@@ -109,7 +120,7 @@ export default function OrderPaymentPage() {
     }
 
     void loadOrder()
-  }, [params.id])
+  }, [orderId, router])
 
   const handlePay = async () => {
     if (!order) {
@@ -148,7 +159,9 @@ export default function OrderPaymentPage() {
       )
 
       router.push(
-        `/orders/${order.id}/complete`,
+        `/orders/complete?orderId=${encodeURIComponent(
+          order.id,
+        )}`,
       )
     } catch (error) {
       console.error(
@@ -193,17 +206,18 @@ export default function OrderPaymentPage() {
           <Card>
             <CardContent className="flex flex-col items-center gap-4 py-10">
               <p className="text-muted-foreground">
-                주문 정보를 불러오지 못했습니다.
+                주문 정보를 불러오지
+                못했습니다.
               </p>
 
               <Button
                 type="button"
                 variant="outline"
                 onClick={() =>
-                  router.back()
+                  router.replace('/events')
                 }
               >
-                이전 페이지로 돌아가기
+                이벤트 목록으로 돌아가기
               </Button>
             </CardContent>
           </Card>
@@ -294,9 +308,7 @@ export default function OrderPaymentPage() {
 
                   return (
                     <button
-                      key={
-                        paymentMethod.id
-                      }
+                      key={paymentMethod.id}
                       type="button"
                       disabled={paying}
                       onClick={() =>
@@ -386,8 +398,8 @@ export default function OrderPaymentPage() {
 
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="size-4" />
-            안전한 결제 시스템으로 보호되는
-            거래입니다.
+            안전한 결제 시스템으로
+            보호되는 거래입니다.
           </div>
 
           <Button
