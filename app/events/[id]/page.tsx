@@ -95,6 +95,8 @@ export default async function EventDetailPage({
   )
 }
 
-export async function generateStaticParams() {
-  return [{ id: '1' }]
+export function generateStaticParams() {
+  return Array.from({ length: 3 }, (_, index) => ({
+    id: String(index + 1),
+  }))
 }
