@@ -10,8 +10,8 @@ import { formatDateTime } from '@/lib/format'
 import { getEventDetail } from '@/services/event.service'
 
 const EVENT_IMAGES: Record<string, string> = {
-  '1': '/images/home-living.png',
-  '2': '/images/tech-friday.jpg',
+  '1': '/images/events/home-living.png',
+  '2': '/images/events/tech-friday.jpg',
 }
 
 export default async function EventDetailPage({
