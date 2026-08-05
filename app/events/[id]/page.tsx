@@ -9,6 +9,11 @@ import { Countdown } from '@/components/countdown'
 import { formatDateTime } from '@/lib/format'
 import { getEventDetail } from '@/services/event.service'
 
+const EVENT_IMAGES: Record<string, string> = {
+  '1': '/images/home-living.png',
+  '2': '/images/tech-friday.jpg',
+}
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -24,6 +29,8 @@ export default async function EventDetailPage({
     notFound()
   }
 
+  const displayImage = EVENT_IMAGES[id] || event.image || '/placeholder.svg'
+
   const isOpen = event.status === 'OPEN'
 
   return (
@@ -31,8 +38,8 @@ export default async function EventDetailPage({
       <section className="relative overflow-hidden bg-foreground text-background">
         <div className="absolute inset-0">
           <Image
-            src={event.image || '/placeholder.svg'}
-            alt=""
+            src={displayImage}
+            alt={event.title || '이벤트 이미지'}
             fill
             priority
             sizes="100vw"
