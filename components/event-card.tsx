@@ -8,8 +8,16 @@ import { Countdown } from '@/components/countdown'
 import { formatDateTime } from '@/lib/format'
 import type { EventSummary } from '@/types'
 
+const EVENT_IMAGES: Record<string, string> = {
+  '1': '/images/events/home-living.png',
+  '2': '/images/events/tech-friday.png',
+}
+
 export function EventCard({ event }: { event: EventSummary }) {
   const isOpen = event.status === 'OPEN'
+
+  const eventIdStr = String(event.id)
+  const displayImage = EVENT_IMAGES[eventIdStr] || event.image || '/placeholder.svg'
 
   return (
     <Card
@@ -19,7 +27,7 @@ export function EventCard({ event }: { event: EventSummary }) {
       <Link href={`/events/${event.id}`} className="flex flex-col">
         <div className="relative aspect-[16/10] overflow-hidden bg-muted">
           <Image
-            src={event.image || '/placeholder.svg'}
+            src={displayImage}
             alt={event.title}
             fill
             sizes="(max-width: 768px) 100vw, 33vw"

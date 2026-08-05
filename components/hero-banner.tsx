@@ -12,7 +12,16 @@ import type { EventSummary } from '@/types'
 
 const AUTOPLAY_MS = 5000
 
+const EVENT_IMAGES: Record<string, string> = {
+  '1': '/images/events/home-living.png',
+  '2': '/images/events/tech-friday.png',
+}
+
 function HeroSlide({ event, active }: { event: EventSummary; active: boolean }) {
+
+  const eventIdStr = String(event.id)
+  const displayImage = EVENT_IMAGES[eventIdStr] || event.image || '/placeholder.svg'
+
   return (
     <div
       className="relative w-full shrink-0 overflow-hidden"
@@ -20,7 +29,7 @@ function HeroSlide({ event, active }: { event: EventSummary; active: boolean }) 
     >
       <div className="absolute inset-0">
         <Image
-          src={event.image || '/placeholder.svg'}
+          src={displayImage}
           alt=""
           fill
           priority={active}
