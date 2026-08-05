@@ -141,6 +141,7 @@ export async function apiFetch<T>(
 
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
+      cache: 'no-store',
       ...rest,
       headers: {
         'Content-Type': 'application/json',
