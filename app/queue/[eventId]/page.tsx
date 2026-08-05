@@ -1,9 +1,17 @@
 import QueueClient from './QueueClient'
+import { getShowcaseProducts } from '@/services/event.service'
 
-export function generateStaticParams() {
-  return Array.from({ length: 15 }, (_, index) => ({
-    eventId: String(index + 1),
-  }))
+export async function generateStaticParams() {
+  try {
+    const eventProducts = await getShowcaseProducts()
+
+    return eventProducts.map((product) => ({
+      eventId: String(product.id), // event-product의 id
+    }))
+  } catch (error) {
+    console.error('generateStaticParams failed:', error)
+    return []
+  }
 }
 
 export default function QueuePage() {
