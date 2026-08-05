@@ -1,17 +1,9 @@
 import ProductClient from './ProductClient'
-import { getShowcaseProducts } from '@/services/event.service'
 
-export async function generateStaticParams() {
-  try {
-    const products = await getShowcaseProducts()
-
-    return products.map((product) => ({
-      id: String(product.productId),
-    }))
-  } catch (error) {
-    console.error('generateStaticParams failed:', error)
-    return []
-  }
+export function generateStaticParams() {
+  return Array.from({ length: 31 }, (_, index) => ({
+    id: String(index + 1),
+  }))
 }
 
 export default function Page() {

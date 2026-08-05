@@ -7,7 +7,7 @@ import { EventStatusBadge } from '@/components/status-badge'
 import { LiveIndicator } from '@/components/live-indicator'
 import { Countdown } from '@/components/countdown'
 import { formatDateTime } from '@/lib/format'
-import { getEventDetail, getEvents } from '@/services/event.service'
+import { getEventDetail } from '@/services/event.service'
 
 const EVENT_IMAGES: Record<string, string> = {
   '1': '/images/events/home-living.png',
@@ -102,15 +102,8 @@ export default async function EventDetailPage({
   )
 }
 
-export async function generateStaticParams() {
-  try {
-    const events = await getEvents()
-
-    return events.map((event) => ({
-      id: String(event.id),
-    }))
-  } catch (error) {
-    console.error('generateStaticParams failed:', error)
-    return []
-  }
+export function generateStaticParams() {
+  return Array.from({ length: 3 }, (_, index) => ({
+    id: String(index + 1),
+  }))
 }

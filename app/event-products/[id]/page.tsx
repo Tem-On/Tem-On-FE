@@ -1,11 +1,8 @@
 import EventProductClient from './EventProductClient'
-import { getEventProducts } from '@/services/event.service'
 
-export async function generateStaticParams() {
-  const products = await getEventProducts()
-
-  return products.map((product) => ({
-    id: String(product.id),
+export function generateStaticParams() {
+  return Array.from({ length: 15 }, (_, index) => ({
+    id: String(index + 1),
   }))
 }
 

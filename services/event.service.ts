@@ -121,19 +121,6 @@ export async function getEventProductsByEventId(
   return (data ?? []).map(mapToEventProduct)
 }
 
-export async function getEventProducts(): Promise<EventProduct[]> {
-  if (USE_MOCK) {
-    return mockDelay(
-      mockEventProducts
-        .filter((ep) => ep.status !== 'HIDDEN' && ep.status !== 'DELETED')
-        .map(withCategory),
-    )
-  }
-
-  const data = await apiFetch<any[]>('/api/event-products')
-  return (data ?? []).map(mapToEventProduct)
-}
-
 export async function getEventProduct(
   eventProductId: string,
 ): Promise<EventProduct> {
