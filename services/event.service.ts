@@ -101,8 +101,14 @@ export async function getEventDetail(eventId: string): Promise<EventDetail> {
       throw new Error('이벤트를 찾을 수 없습니다.')
     }
 
-    const products = mockEventProducts.filter((p) => p.eventId === eventId)
-    return mockDelay({ ...event, products })
+    const products = mockEventProducts.filter(
+      (p) => p.eventId === eventId,
+    )
+
+    return mockDelay({
+      ...event,
+      products,
+    })
   }
 
   const event = await apiFetch<EventDetail>(
@@ -113,11 +119,12 @@ export async function getEventDetail(eventId: string): Promise<EventDetail> {
     },
   )
 
+  const products = (event.products ?? []).map(mapToEventProduct)
+
   return {
     ...event,
-    products: event.products ?? [],
-    productCount:
-      event.productCount ?? event.products?.length ?? 0,
+    products,
+    productCount: products.length,
   }
 }
 
