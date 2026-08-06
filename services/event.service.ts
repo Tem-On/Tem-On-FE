@@ -87,7 +87,9 @@ export async function getEvents(status?: string): Promise<EventSummary[]> {
   return apiFetch<EventSummary[]>(`/api/events${query}`)
 }
 
-export async function getEventDetail(eventId: string): Promise<EventDetail> {
+export async function getEventDetail(
+  eventId: string,
+): Promise<EventDetail> {
   if (USE_MOCK) {
     const event = mockEvents.find((e) => e.id === eventId)
 
@@ -100,12 +102,11 @@ export async function getEventDetail(eventId: string): Promise<EventDetail> {
   }
 
   const event = await apiFetch<EventDetail>(`/api/events/${eventId}`)
-  const products = await getEventProductsByEventId(eventId)
 
   return {
     ...event,
-    products,
-    productCount: products.length,
+    products: event.products ?? [],
+    productCount: event.products?.length ?? 0,
   }
 }
 
