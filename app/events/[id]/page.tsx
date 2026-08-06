@@ -25,8 +25,9 @@ export default async function EventDetailPage({
 
   try {
     event = await getEventDetail(id)
-  } catch {
-    notFound()
+  } catch (error) {
+    console.error(`[EventDetailPage] id=${id} 조회 실패`, error)
+    throw error
   }
 
   const displayImage =

@@ -126,12 +126,14 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, token, headers, ...rest } = options
+  const {
+    body,
+    token,
+    headers,
+    cache,
+    ...rest
+  } = options
 
-  /*
-   * token이 undefined일 때만 localStorage 토큰을 사용합니다.
-   * null을 직접 전달하면 Authorization 헤더를 넣지 않습니다.
-   */
   const authToken =
     token === undefined
       ? getToken()
@@ -140,9 +142,15 @@ export async function apiFetch<T>(
   let res: Response
 
   try {
+    const resolvedCache: RequestCache =
+      cache ??
+      (typeof window === 'undefined'
+        ? 'force-cache'
+        : 'no-store')
+
     res = await fetch(`${API_BASE_URL}${path}`, {
-      cache: 'no-store',
       ...rest,
+      cache: resolvedCache,
       headers: {
         'Content-Type': 'application/json',
         ...(authToken
@@ -158,12 +166,12 @@ export async function apiFetch<T>(
           : undefined,
     })
   } catch (error) {
-    console.error(`[apiFetch] 요청 실패: ${API_BASE_URL}${path}`, error)
+    console.error(
+      `[apiFetch] 요청 실패: ${API_BASE_URL}${path}`,
+      error,
+    )
 
-    if (
-      error instanceof Error &&
-      'cause' in error
-    ) {
+    if (error instanceof Error && 'cause' in error) {
       console.error('[apiFetch] 원인:', error.cause)
     }
 
