@@ -87,9 +87,7 @@ export async function getEvents(status?: string): Promise<EventSummary[]> {
   return apiFetch<EventSummary[]>(`/api/events${query}`)
 }
 
-export async function getEventDetail(
-  eventId: string,
-): Promise<EventDetail> {
+export async function getEventDetail(eventId: string): Promise<EventDetail> {
   if (USE_MOCK) {
     const event = mockEvents.find((e) => e.id === eventId)
 
