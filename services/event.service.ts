@@ -84,7 +84,13 @@ export async function getEvents(status?: string): Promise<EventSummary[]> {
   }
 
   const query = status ? `?status=${status}` : ''
-  return apiFetch<EventSummary[]>(`/api/events${query}`)
+  return apiFetch<EventSummary[]>(
+    `/api/events${query}`,
+    {
+      token: null,
+      cache: 'force-cache',
+    },
+  )
 }
 
 export async function getEventDetail(eventId: string): Promise<EventDetail> {
@@ -99,12 +105,19 @@ export async function getEventDetail(eventId: string): Promise<EventDetail> {
     return mockDelay({ ...event, products })
   }
 
-  const event = await apiFetch<EventDetail>(`/api/events/${eventId}`)
+  const event = await apiFetch<EventDetail>(
+    `/api/events/${eventId}`,
+    {
+      token: null,
+      cache: 'force-cache',
+    },
+  )
 
   return {
     ...event,
     products: event.products ?? [],
-    productCount: event.products?.length ?? 0,
+    productCount:
+      event.productCount ?? event.products?.length ?? 0,
   }
 }
 
