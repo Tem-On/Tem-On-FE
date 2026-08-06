@@ -102,8 +102,14 @@ export default async function EventDetailPage({
   )
 }
 
-export function generateStaticParams() {
-  return Array.from({ length: 3 }, (_, index) => ({
-    id: String(index + 1),
+export async function generateStaticParams() {
+  const response = await fetch(
+    'https://api.temon.shop/api/events'
+  )
+
+  const events: Array<{ id: number }> = await response.json()
+
+  return events.map((event) => ({
+    id: String(event.id),
   }))
 }
