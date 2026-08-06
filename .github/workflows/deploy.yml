@@ -33,20 +33,40 @@ jobs:
 
       # 5. 운영 API 접근 확인
       - name: Verify production API
+        env:
+          API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
         run: |
           echo "===== 이벤트 목록 API 확인 ====="
-          curl -fSs "${{ secrets.NEXT_PUBLIC_API_BASE_URL }}/api/events" \
+          curl -fSs "${API_BASE_URL}/api/events" \
             -o /tmp/events.json
 
           head -c 300 /tmp/events.json
           echo
 
           echo "===== 이벤트 2 상세 API 확인 ====="
-          curl -fSs "${{ secrets.NEXT_PUBLIC_API_BASE_URL }}/api/events/2" \
+          curl -fSs "${API_BASE_URL}/api/events/2" \
             -o /tmp/event2.json
 
           head -c 300 /tmp/event2.json
           echo
+
+          echo "===== 이벤트 2 제목 추출 ====="
+          EVENT_TITLE=$(node -e "
+            const fs = require('fs');
+            const event = JSON.parse(
+              fs.readFileSync('/tmp/event2.json', 'utf8')
+            );
+
+            if (!event.title) {
+              console.error('이벤트 제목이 없습니다.');
+              process.exit(1);
+            }
+
+            process.stdout.write(event.title);
+          ")
+
+          echo "이벤트 제목: ${EVENT_TITLE}"
+          echo "EVENT_TITLE=${EVENT_TITLE}" >> "$GITHUB_ENV"
 
       # 6. Next.js 빌드
       - name: Build project
@@ -55,8 +75,6 @@ jobs:
           NEXT_PUBLIC_KAKAO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_KAKAO_CLIENT_ID }}
           NEXT_PUBLIC_KAKAO_REDIRECT_URI: ${{ secrets.NEXT_PUBLIC_KAKAO_REDIRECT_URI }}
           NEXT_PUBLIC_WS_URL: ${{ secrets.NEXT_PUBLIC_WS_URL }}
-
-          # 운영 배포에서는 Mock을 사용하지 않음
           NEXT_PUBLIC_USE_MOCK: 'false'
         run: pnpm build
 
@@ -70,26 +88,52 @@ jobs:
           test -d out/_next/static/chunks
 
           echo "===== 생성된 JS 개수 ====="
-          find out/_next/static/chunks -type f -name '*.js' | wc -l
+          JS_COUNT=$(find out/_next/static/chunks \
+            -type f \
+            -name '*.js' \
+            | wc -l)
+
+          echo "JS 파일 개수: ${JS_COUNT}"
+
+          if [ "${JS_COUNT}" -eq 0 ]; then
+            echo "ERROR: 생성된 JS 파일이 없습니다."
+            exit 1
+          fi
 
           echo "===== 생성된 JS 파일 일부 ====="
-          find out/_next/static/chunks -type f -name '*.js' | head -20
+          find out/_next/static/chunks \
+            -type f \
+            -name '*.js' \
+            | head -20
 
           echo "===== 이벤트 페이지 파일 확인 ====="
-          find out/events -maxdepth 3 -type f | sort
+          find out/events \
+            -maxdepth 3 \
+            -type f \
+            | sort
 
           echo "===== events/2.html 존재 확인 ====="
           test -f out/events/2.html
 
-          echo "===== events/2.html 404 검사 ====="
-          if grep -qE \
-            '404: This page could not be found|NEXT_HTTP_ERROR_FALLBACK;404' \
-            out/events/2.html; then
-            echo "ERROR: out/events/2.html이 404 페이지로 생성됐습니다."
+          echo "===== events/2 실제 콘텐츠 검사 ====="
+          echo "검사할 이벤트 제목: ${EVENT_TITLE}"
+
+          if ! grep -Fq "${EVENT_TITLE}" out/events/2.html; then
+            echo "ERROR: out/events/2.html에 이벤트 2 제목이 없습니다."
+
+            echo "===== 생성된 HTML 내용 일부 ====="
+            head -c 1000 out/events/2.html
+            echo
+
             exit 1
           fi
 
-          echo "SUCCESS: out/events/2.html이 정상적으로 생성됐습니다."
+          if ! grep -Fq "이벤트 상품" out/events/2.html; then
+            echo "ERROR: out/events/2.html에 이벤트 상품 영역이 없습니다."
+            exit 1
+          fi
+
+          echo "SUCCESS: out/events/2.html이 정상 이벤트 페이지입니다."
 
       # 8. AWS 인증
       - name: Configure AWS credentials
@@ -102,16 +146,20 @@ jobs:
       # 9. Next.js JS/CSS 정적 파일 먼저 업로드
       - name: Upload Next static assets
         run: |
-          aws s3 sync ./out/_next/ s3://temon-frontend-dev/_next/ \
+          aws s3 sync \
+            ./out/_next/ \
+            s3://temon-frontend-dev/_next/ \
             --cache-control "public,max-age=31536000,immutable"
 
       # 10. HTML 및 나머지 파일 업로드
       - name: Deploy site files to S3
         run: |
-          aws s3 sync ./out/ s3://temon-frontend-dev/ \
+          aws s3 sync \
+            ./out/ \
+            s3://temon-frontend-dev/ \
             --exclude "_next/*" \
             --delete \
-            --cache-control "no-cache"
+            --cache-control "no-cache,no-store,must-revalidate"
 
       # 11. S3 배포 결과 확인
       - name: Verify S3 deployment
@@ -121,8 +169,21 @@ jobs:
             --bucket temon-frontend-dev \
             --key events/2.html
 
-          echo "===== S3 JS 파일 개수 일부 확인 ====="
-          aws s3 ls s3://temon-frontend-dev/_next/static/chunks/ \
+          echo "===== S3 events/2.html 다운로드 및 검사 ====="
+          aws s3 cp \
+            s3://temon-frontend-dev/events/2.html \
+            /tmp/s3-event2.html
+
+          if ! grep -Fq "${EVENT_TITLE}" /tmp/s3-event2.html; then
+            echo "ERROR: S3의 events/2.html에 이벤트 제목이 없습니다."
+            exit 1
+          fi
+
+          echo "SUCCESS: S3 events/2.html이 정상입니다."
+
+          echo "===== S3 JS 파일 일부 확인 ====="
+          aws s3 ls \
+            s3://temon-frontend-dev/_next/static/chunks/ \
             | head -20
 
       # 12. CloudFront 캐시 무효화
@@ -135,8 +196,8 @@ jobs:
             --query 'Invalidation.Id' \
             --output text)
 
-          echo "CloudFront invalidation ID: $INVALIDATION_ID"
-          echo "invalidation_id=$INVALIDATION_ID" >> "$GITHUB_OUTPUT"
+          echo "CloudFront invalidation ID: ${INVALIDATION_ID}"
+          echo "invalidation_id=${INVALIDATION_ID}" >> "$GITHUB_OUTPUT"
 
       # 13. 캐시 무효화 완료 대기
       - name: Wait for CloudFront invalidation
@@ -152,13 +213,25 @@ jobs:
         run: |
           echo "===== 운영 events/2 응답 확인 ====="
 
-          curl -fSs https://temon.shop/events/2 \
+          curl -fSs \
+            -H "Cache-Control: no-cache" \
+            "https://temon.shop/events/2?deploy=${GITHUB_SHA}" \
             -o /tmp/deployed-event2.html
 
-          if grep -qE \
-            '404: This page could not be found|NEXT_HTTP_ERROR_FALLBACK;404' \
-            /tmp/deployed-event2.html; then
-            echo "ERROR: 운영 events/2 페이지가 아직 404입니다."
+          echo "===== 운영 페이지 이벤트 제목 검사 ====="
+          if ! grep -Fq "${EVENT_TITLE}" /tmp/deployed-event2.html; then
+            echo "ERROR: 운영 events/2에 이벤트 제목이 없습니다."
+
+            echo "===== 운영 HTML 내용 일부 ====="
+            head -c 1000 /tmp/deployed-event2.html
+            echo
+
+            exit 1
+          fi
+
+          echo "===== 운영 페이지 이벤트 상품 영역 검사 ====="
+          if ! grep -Fq "이벤트 상품" /tmp/deployed-event2.html; then
+            echo "ERROR: 운영 events/2에 이벤트 상품 영역이 없습니다."
             exit 1
           fi
 
