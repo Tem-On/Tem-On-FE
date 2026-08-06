@@ -112,28 +112,28 @@ jobs:
             -type f \
             | sort
 
-          echo "===== events/2.html 존재 확인 ====="
-          test -f out/events/2.html
+          echo "===== events/2/index.html 존재 확인 ====="
+          test -f out/events/2/index.html
 
           echo "===== events/2 실제 콘텐츠 검사 ====="
           echo "검사할 이벤트 제목: ${EVENT_TITLE}"
 
-          if ! grep -Fq "${EVENT_TITLE}" out/events/2.html; then
-            echo "ERROR: out/events/2.html에 이벤트 2 제목이 없습니다."
+          if ! grep -Fq "${EVENT_TITLE}" out/events/2/index.html; then
+            echo "ERROR: out/events/2/index.html에 이벤트 2 제목이 없습니다."
 
             echo "===== 생성된 HTML 내용 일부 ====="
-            head -c 1000 out/events/2.html
+            head -c 1000 out/events/2/index.html
             echo
 
             exit 1
           fi
 
-          if ! grep -Fq "이벤트 상품" out/events/2.html; then
-            echo "ERROR: out/events/2.html에 이벤트 상품 영역이 없습니다."
+          if ! grep -Fq "이벤트 상품" out/events/2/index.html; then
+            echo "ERROR: out/events/2/index.html에 이벤트 상품 영역이 없습니다."
             exit 1
           fi
 
-          echo "SUCCESS: out/events/2.html이 정상 이벤트 페이지입니다."
+          echo "SUCCESS: out/events/2/index.html이 정상 이벤트 페이지입니다."
 
       # 8. AWS 인증
       - name: Configure AWS credentials
