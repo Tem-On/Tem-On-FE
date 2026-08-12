@@ -46,56 +46,113 @@ SockJS & StompJS 기반 웹소켓 연결을 통해 대기 인원 정보와 실�
 # 📱 서비스 화면 (Service Screens)
 <div align=center>
 
-### 1. 로그인 페이지 (Login)
-카카오 소셜 로그인을 제공하며, 안정적인 토큰 교환 콜백 처리를 보장합니다.
+
+### 1. 메인 화면 및 핫딜 쇼케이스 (Main Showcase)
+오픈 예정을 알리는 타이머 카운터 및 현재 진행 중인 한정 쇼케이스 핫딜 이벤트를 실시간으로 탐색할 수 있습니다.
+
+<img width="800" alt="메인페이지" src="https://github.com/M4rs0312/hello/blob/main/%EB%A9%94%EC%9D%B8%ED%8E%98%EC%9D%B4%EC%A7%80(%EB%A1%9C%EA%B7%B8%EC%9D%B8%EC%A0%84).png" />
+
+---
+
+### 2. 로그인 페이지 (Login)
+카카오 소셜 로그인을 제공하며, OAuth 2.0 기반의 안정적인 토큰 교환 및 인증 콜백 프로세스를 보장합니다.
 
 <img width="800" alt="로그인페이지" src="https://github.com/M4rs0312/hello/blob/main/image%20(8).png" />
 
 ---
 
-### 2. 메인 화면 및 핫딜 쇼케이스 (Main Showcase)
-오픈 예정을 알리는 타이머 카운터 및 현재 진행 중인 한정 쇼케이스 핫딜 이벤트를 실시간으로 탐색할 수 있습니다.
+### 3. 이벤트 상품 상세 및 재고 트래킹 (Product Detail & Inventory)
+실시간 재고 상태 바(StockBar) 및 재고 갱신 인디케이터를 확인하고, 선착순 진입을 위한 대기열에 입장합니다.
 
-<img width="800" alt="메인페이지" src="https://github.com/M4rs0312/hello/blob/main/image%20(9).png" />
+<img width="800" alt="상세페이지" src="https://github.com/M4rs0312/hello/blob/main/%EC%83%81%ED%92%88%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
 
 ---
 
-### 3. 실시간 대기열 대기 화면 (Live Waiting Queue)
+### 4. 실시간 대기열 대기 화면 (Live Waiting Queue)
 구매 요청 폭주 시 대기 원형 진행도 링(Circular Progress Ring) UI로 실시간 순번 및 총대기인원, 예상 시간을 모니터링합니다.
 
-<img width="800" alt="대기열페이지" src="" />
+<img width="800" alt="대기열페이지" src="https://github.com/M4rs0312/hello/blob/main/%EB%8C%80%EA%B8%B0%EC%97%B4.png" />
 
 ---
 
-### 4. 이벤트 상품 상세 및 재고 트래킹 (Product Detail & Inventory)
-실시간 재고 상태 바(StockBar) 및 실시간 재고 갱신 인디케이터를 확인하고, 1인당 구매 제한 규칙에 따라 즉시 바로구매를 진행할 수 있습니다.
+### 5. 상품 수량 선택 및 주문 (Product Quantity & Order)
+1인당 구매 제한 규칙을 검증하며, 원하는 구매 수량을 선택한 뒤 주문 페이지로 이동합니다.
 
-<img width="800" alt="상세페이지" src="" />
+<img width="800" alt="상품주문페이지" src="https://github.com/M4rs0312/hello/blob/main/%EC%83%81%ED%92%88%EA%B5%AC%EB%A7%A4%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
 
 ---
 
-### 5. 주문 및 결제 진행 (Checkout & Payment)
+### 6. 주문 및 결제 진행 (Checkout & Payment)
 대기열 검증을 완료한 트래픽에 대해 신속하게 최종 결제 승인 프로세스를 수행하는 체크아웃 폼을 지원합니다.
 
-<img width="800" alt="결제프로세스페이지" src="" />
+<img width="800" alt="결제프로세스페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B5%AC%EB%A7%A4%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
 
 ---
 
-### 6. 어드민 모니터링 대시보드 - 실시간 로그 피드 (Service Logs & Status)
-다양한 마이크로서비스에서 배출하는 분산 실시간 시스템 로그 피드 스트림을 감지하여 오류 수준별 시스템 로깅 상태를 가시화합니다.
+### 7. 결제 완료 및 주문 내역 (Order Confirmation)
+결제 성공 결과를 확인하고, 주문 상세 내역 조회 및 메인 쇼핑 페이지로의 전환을 지원합니다.
 
-<img width="800" alt="어드민실시간로그페이지" src="" />
-
----
-
-### 7. 어드민 대시보드 - 자원 모니터링 및 실시간 지표 (Service Metrics & Charts)
-서비스 서버 인프라 상태를 나타내어 시스템 부하 임계치가 초과될 때 경고 및 치명 상태 알림 표시가 가능합니다.
-
-<img width="800" alt="어드민통계차트페이지" src="" />
+<img width="800" alt="결제완료페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B5%AC%EB%A7%A4%EC%99%84%EB%A3%8C.png" />
 
 ---
 
-### 8. 마이페이지 및 설정 조회 (My Page / Profile Settings)
+### 8. 어드민 대시보드 - 운영 현황 (Admin Overview Dashboard)
+총 주문 건수, 총 매출액, 최근 주문 내역 등 주요 핵심 운영 지표를 한눈에 파악할 수 있도록 제공합니다.
+
+<img width="800" alt="어드민대시보드페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EB%8C%80%EC%8B%9C%EB%B3%B4%EB%93%9C.png" />
+
+---
+
+### 9. 어드민 모니터링 대시보드 - 자원 모니터링 및 로그 스트림 (Service Metrics & )
+서비스 서버 인프라 상태 및 분산 시스템 로그 스트림을 실시간 감지하여 임계치 초과 시 경고 알림을 표시합니다.
+
+<img width="800" alt="어드민모니터링페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%8B%A4%EC%8B%9C%EA%B0%84%20%EB%AA%A8%EB%8B%88%ED%84%B0%EB%A7%81.png" />
+
+---
+
+### 10-1. 어드민 커머스 관리 - 상품 관리 (Admin Product Management)
+전체 상품 목록을 조회하고, 신규 상품 등록 및 기존 상품 정보(가격, 상태, 카테고리)의 수정·삭제를 제어합니다.
+
+<img width="800" alt="어드민상품관리페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%83%81%ED%92%88%EA%B4%80%EB%A6%AC.png" />
+
+---
+
+### 10-2. 어드민 커머스 관리 - 이벤트 관리 (Admin Event Management)
+선착순 핫딜 이벤트 생성, 오픈 및 종료 카운트다운 일정 설정, 이벤트 상태(대기/진행 중/종료)를 관리합니다.
+
+<img width="800" alt="어드민이벤트관리페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%9D%B4%EB%B2%A4%ED%8A%B8%20%EA%B4%80%EB%A6%AC.png" />
+
+---
+
+### 10-3. 어드민 커머스 관리 - 이벤트 상품 매핑 (Admin Event Products)
+특정 핫딜 이벤트에 매핑될 전용 상품을 지정하고, 이벤트 할인가 및 한정 판매 조건들을 설정합니다.
+
+<img width="800" alt="어드민이벤트상품페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%9D%B4%EB%B2%A4%ED%8A%B8%20%EC%83%81%ED%92%88.png" />
+
+---
+
+### 10-4. 어드민 커머스 관리 - 실시간 재고 관리 (Admin Inventory Control)
+이벤트 대상 상품의 실시간 재고 흐름을 모니터링하고, 수동 재고 조정 및 품절 상태 처리를 수행합니다.
+
+<img width="800" alt="어드민재고관리페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%9E%AC%EA%B3%A0%20%EA%B4%80%EB%A6%AC.png" />
+
+---
+
+### 11-1. 어드민 운영 관리 - 주문 관리 (Admin Order Management)
+고객의 전체 결제 및 주문 내역을 실시간으로 조회하고, 배송 상태 관리 및 결제 취소 요청을 처리합니다.
+
+<img width="800" alt="어드민주문관리페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EC%A3%BC%EB%AC%B8%EA%B4%80%EB%A6%AC.png" />
+
+---
+
+### 11-2. 어드민 운영 관리 - 실시간 대기열 관리 (Admin Queue Control)
+Redis ZSET 기반 대기열의 현재 진입 상태, 만료 처리 수치, 대기열 강제 비우기 등 트래픽 제어 옵션을 제공합니다.
+
+<img width="800" alt="어드민대기열관리페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B4%80%EB%A6%AC%EC%9E%90%20%EB%8C%80%EA%B8%B0%EC%97%B4%EA%B4%80%EB%A6%AC.png" />
+
+---
+
+### 12. 마이페이지 및 설정 조회 (My Page / Profile Settings)
 로그인 세션 기반으로 프로필을 업데이트하고 닉네임을 설정하며, 그동안 주문 및 구매 완료한 핫딜을 관리합니다.
 <img width="800" alt="마이페이지" src="https://github.com/M4rs0312/hello/blob/main/image%20(12).png" />
 
