@@ -8,7 +8,7 @@
 
 # 🎨 프로젝트 개요
 <div align=center>
-<img width="700" alt="프로젝트소개" src="https://github.com/M4rs0312/hello/blob/main/logo.png" />
+<img width="700" alt="프로젝트소개" src="" />
 <br></br>	
 </div>
 
