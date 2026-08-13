@@ -91,11 +91,9 @@ interface EventForm {
   status: EventStatus
 }
 
-function getEventImageUrl(image?: string, id?: string): string {
-  if (image && image.trim()) return image;
-  if (id === '1' || id === 'home-living') return '/images/home-living.png';
-  if (id === '2' || id === 'tech-friday') return '/images/tech-friday.png';
-  return '/placeholder.svg';
+const EVENT_IMAGES: Record<string, string> = {
+  '1': '/images/events/home-living.png',
+  '2': '/images/events/tech-friday.png',
 }
 
 function formatDateTimeLocal(
@@ -408,14 +406,21 @@ export default function AdminEventsPage() {
                   </TableCell>
                 </TableRow>
               )}
+              
 
-              {events?.map((event) => (
+              {events?.map((event) => {
+                const displayImage =
+                  EVENT_IMAGES[String(event.id)] ||
+                  event.image ||
+                  '/placeholder.svg'
+
+                return (
                 <TableRow key={event.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="relative size-10 shrink-0 overflow-hidden rounded-md border bg-muted">
                         <Image
-                          src={getEventImageUrl(event.image, event.id)}
+                          src={displayImage}
                           alt={event.title}
                           fill
                           sizes="40px"
@@ -527,7 +532,8 @@ export default function AdminEventsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )
+              })}
             </TableBody>
           </Table>
         </Card>
