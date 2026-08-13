@@ -91,6 +91,13 @@ interface EventForm {
   status: EventStatus
 }
 
+function getEventImageUrl(image?: string, id?: string): string {
+  if (image && image.trim()) return image;
+  if (id === '1' || id === 'home-living') return '/images/home-living.png';
+  if (id === '2' || id === 'tech-friday') return '/images/tech-friday.png';
+  return '/placeholder.svg';
+}
+
 function formatDateTimeLocal(
   value?: string,
 ): string {
@@ -408,10 +415,7 @@ export default function AdminEventsPage() {
                     <div className="flex items-center gap-3">
                       <div className="relative size-10 shrink-0 overflow-hidden rounded-md border bg-muted">
                         <Image
-                          src={
-                            event.image ||
-                            '/placeholder.svg'
-                          }
+                          src={getEventImageUrl(event.image, event.id)}
                           alt={event.title}
                           fill
                           sizes="40px"
