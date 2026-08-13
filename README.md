@@ -78,7 +78,7 @@ SockJS & StompJS 기반 웹소켓 연결을 통해 대기 인원 정보와 실�
 ### 5. 상품 수량 선택 및 주문 (Product Quantity & Order)
 1인당 구매 제한 규칙을 검증하며, 원하는 구매 수량을 선택한 뒤 주문 페이지로 이동합니다.
 
-<img width="800" alt="상품주문페이지" src="https://github.com/M4rs0312/hello/blob/main/%EC%83%81%ED%92%88%EA%B5%AC%EB%A7%A4%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
+<img width="800" alt="상품주문페이지" src="https://github.com/M4rs0312/hello/blob/main/%EA%B5%AC%EB%A7%A4%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
 
 ---
 
