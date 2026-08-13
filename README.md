@@ -154,7 +154,7 @@ Redis ZSET 기반 대기열의 현재 진입 상태, 만료 처리 수치, 대�
 
 ### 12. 마이페이지 및 설정 조회 (My Page / Profile Settings)
 로그인 세션 기반으로 프로필을 업데이트하고 닉네임을 설정하며, 그동안 주문 및 구매 완료한 핫딜을 관리합니다.
-<img width="800" alt="마이페이지" src="https://github.com/M4rs0312/hello/blob/main/image%20(12).png" />
+<img width="800" alt="마이페이지" src="https://github.com/M4rs0312/hello/blob/main/%EB%A7%88%EC%9D%B4%ED%8E%98%EC%9D%B4%EC%A7%80.png" />
 
 
 </div>
