@@ -47,6 +47,9 @@ import {
   cancelPayment,
   getMyOrders,
 } from '@/services/order.service'
+import { 
+  getEventProduct 
+} from '@/services/event.service'
 import {
   updateProfile,
   withdraw,
@@ -113,8 +116,34 @@ export default function MyPage() {
 
   const loadOrders = async () => {
     try {
-      const result = await getMyOrders()
-      setOrders(result)
+
+      const rawOrders = await getMyOrders()
+
+      const ordersWithImages = await Promise.all(
+        rawOrders.map(async (order) => {
+          const itemsWithImages = await Promise.all(
+            (order.items || []).map(async (item) => {
+              try {
+                const productDetail = await getEventProduct(item.eventProductId)
+                return {
+                  ...item,
+                  image: productDetail.image || item.image,
+                }
+              } catch (err) {
+                console.error(`상품 이미지 조회 실패 (${item.eventProductId}):`, err)
+                return item
+              }
+            })
+          )
+
+          return {
+            ...order,
+            items: itemsWithImages,
+          }
+        })
+      )
+
+      setOrders(ordersWithImages)
     } catch (error) {
       console.error(error)
       setOrders([])
