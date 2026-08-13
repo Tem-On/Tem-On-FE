@@ -30,6 +30,7 @@ import {
   formatDateTime,
 } from '@/lib/format'
 import { getOrder } from '@/services/order.service'
+import { getEventProduct } from '@/services/event.service'
 import type { Order } from '@/types'
 
 export default function OrderCompleteClient() {
@@ -59,21 +60,33 @@ export default function OrderCompleteClient() {
       try {
         setLoading(true)
 
-        const result =
-          await getOrder(orderId)
+        const result = await getOrder(orderId)
 
-        setOrder(result)
-      } catch (error) {
-        console.error(
-          '주문 완료 정보 조회 실패:',
-          error,
+        const itemsWithImages = await Promise.all(
+          result.items.map(async (item) => {
+            try {
+              const productDetail = await getEventProduct(item.eventProductId)
+              return {
+                ...item,
+                image: productDetail.image || item.image
+              }
+            } catch (err) {
+              console.error(`상품 이미지 조회 실패 (${item.eventProductId}):`, err)
+              return item
+            }
+          })
         )
 
+        setOrder({
+          ...result,
+          items: itemsWithImages
+        })
+      } catch (error) {
+        console.error('주문 완료 정보 조회 실패:', error)
         const message =
           error instanceof Error
             ? error.message
             : '주문 정보를 불러오지 못했습니다.'
-
         toast.error(message)
       } finally {
         setLoading(false)
