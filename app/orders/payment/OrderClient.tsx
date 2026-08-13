@@ -32,6 +32,7 @@ import {
   getOrder,
   payOrder,
 } from '@/services/order.service'
+import { getEventProduct } from '@/services/event.service'
 import type {
   Order,
   PaymentMethod,
@@ -101,7 +102,25 @@ export default function OrderClient() {
         const result =
           await getOrder(orderId)
 
-        setOrder(result)
+        const itemsWithImages = await Promise.all(
+          (result.items || []).map(async (item) => {
+            try {
+              const productDetail = await getEventProduct(item.eventProductId)
+              return {
+                ...item,
+                image: productDetail.image || item.image,
+              }
+            } catch (err) {
+              console.error(`상품 이미지 조회 실패 (${item.eventProductId}):`, err)
+              return item
+            }
+          })
+        )
+
+        setOrder({
+          ...result,
+          items: itemsWithImages,
+        })
       } catch (error) {
         console.error(
           '주문 조회 실패:',
